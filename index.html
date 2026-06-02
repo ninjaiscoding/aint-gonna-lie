@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NGL - Online Party Game</title>
+    <title>Ain't Gonna Lie - Online Party Game</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
@@ -58,6 +58,7 @@
             <select id="setup-rounds">
                 <option value="3">3 Rounds</option>
                 <option value="5" selected>5 Rounds</option>
+                <option value="10">10 Rounds</option>
             </select>
             <button class="btn-gradient" onclick="createRoom()">Create New Room</button>
         </div>
@@ -70,7 +71,7 @@
 
     <div id="screen-lobby" class="screen">
         <h2>Lobby Room</h2>
-        <p class="subtitle">Click the code box to copy your link to Discord!</p>
+        <p class="subtitle">Click the code box to copy your link to your friends!</p>
         <div class="room-code-display" id="lobby-code" onclick="copyInviteLink()">----</div>
         <div>
             <p class="subtitle" style="text-align: left; margin-bottom: 8px;">Connected Players:</p>
@@ -94,7 +95,7 @@
 
     <div id="screen-voting" class="screen">
         <h2>Who is Lying?</h2>
-        <p class="subtitle">Discuss on Discord, then lock in your vote.</p>
+        <p id="voting-instruction-text" class="subtitle">Discuss out loud, then lock in your vote.</p>
         <div id="voting-scoreboard" class="live-score-bar"></div>
         <div id="voting-options" class="voting-grid"></div>
     </div>
@@ -115,7 +116,6 @@
 </div>
 
 <script>
-    // URL Auto-Join detection via URL Params
     const urlParams = new URLSearchParams(window.location.search);
     const urlRoomCode = urlParams.get('room');
     if (urlRoomCode) {
@@ -149,13 +149,20 @@
     function copyInviteLink() {
         const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${myRoomCode}`;
         navigator.clipboard.writeText(inviteUrl);
-        alert("Invite link copied! Send it directly to your Discord chat.");
+        alert("Invite link copied! Send it directly to your group.");
     }
 
     function hostStartGame() { socket.emit('startGame', { roomCode: myRoomCode }); }
     function hostNextRound() { socket.emit('nextRound', { roomCode: myRoomCode }); }
     function hostRestartGame() { socket.emit('restartGame', { roomCode: myRoomCode }); }
-    function castVote(targetId) { socket.emit('castVote', { roomCode: myRoomCode, votedPlayerId: targetId }); }
+    
+    function castVote(targetId) { 
+        if (!amIHost) {
+            alert("Only the Room Host can lock in the final group accusation! Tell your host who to click.");
+            return;
+        }
+        socket.emit('castVote', { roomCode: myRoomCode, votedPlayerId: targetId }); 
+    }
 
     // --- SOCKET LISTENERS ---
     socket.on('roomCreated', (code) => {
@@ -196,11 +203,23 @@
             content.innerText = word;
         }
 
-        // Setup Voting Board items inside
+        // Adjust description based on host power status
+        const instructionText = document.getElementById('voting-instruction-text');
+        if (amIHost) {
+            instructionText.innerHTML = "<strong>You are the Host.</strong> Talk out loud, then click a player to submit your group's final choice!";
+        } else {
+            instructionText.innerText = "Discuss with the group, then tell the Host who to vote for!";
+        }
+
+        // Setup Scoreboard
         document.getElementById('voting-scoreboard').innerHTML = "Live Scores: " + players.map(p => `${p.name}: ${p.points}`).join(' | ');
+        
+        // Setup Voting buttons
         const optionsGrid = document.getElementById('voting-options');
         optionsGrid.innerHTML = players.map(p => `
-            <button class="btn-outline" onclick="castVote('${p.id}')">Accuse ${p.name}</button>
+            <button class="btn-outline" style="${!amIHost ? 'opacity: 0.6; cursor: not-allowed;' : ''}" onclick="castVote('${p.id}')">
+                ${amIHost ? `Accuse ${p.name}` : `Tell Host to Vote: ${p.name}`}
+            </button>
         `).join('');
 
         navigateTo('screen-reveal');
@@ -223,7 +242,7 @@
                 `).join('');
                 document.getElementById('host-restart-btn').style.display = amIHost ? 'block' : 'none';
                 navigateTo('screen-gameover');
-            }, 4000);
+            }, 5000);
         } else {
             document.getElementById('host-next-btn').style.display = amIHost ? 'block' : 'none';
             document.getElementById('client-next-msg').style.display = amIHost ? 'none' : 'block';
