@@ -36,7 +36,6 @@ const rooms = {};
 
 io.on('connection', (socket) => {
 
-    // --- CREATE ROOM ---
     socket.on('createRoom', ({ rounds }) => {
         const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
         rooms[roomCode] = {
@@ -49,12 +48,12 @@ io.on('connection', (socket) => {
             currentCategory: null,
             currentWord: null,
             imposterId: null,
-            playedCombinations: []
+            playedCombinations: [],
+            currentTurnIndex: 0 // Tracks whose turn it currently is to type
         };
         socket.emit('roomCreated', roomCode);
     });
 
-    // --- JOIN ROOM ---
     socket.on('joinRoom', ({ roomCode, playerName }) => {
         const room = rooms[roomCode];
         if (!room) return socket.emit('errorMsg', 'Room not found.');
@@ -66,7 +65,8 @@ io.on('connection', (socket) => {
             name: playerName || `Player ${room.players.length + 1}`,
             points: 0,
             isImposter: false,
-            hint: ""
+            hint: "",
+            pNumber: room.players.length + 1 // Permanent player number assignment
         };
 
         room.players.push(newPlayer);
@@ -80,7 +80,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    // --- START GAME / ROUND ---
     socket.on('startGame', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
@@ -119,6 +118,16 @@ io.on('connection', (socket) => {
             if (p.isImposter) room.imposterId = p.id;
         });
 
+        // Dynamic round starter: Round 1 starts with Index 0 (P1), Round 2 starts with Index 1 (P2), wrapped using modulo (%)
+        room.currentTurnIndex = (room.currentRound - 1) % room.players.length;
+
+        emitTurnState(roomCode);
+    }
+
+    function emitTurnState(roomCode) {
+        const room = rooms[roomCode];
+        const activePlayer = room.players[room.currentTurnIndex];
+
         room.players.forEach((player) => {
             io.to(player.id).emit('roundStarted', {
                 category: room.currentCategory,
@@ -126,47 +135,51 @@ io.on('connection', (socket) => {
                 isImposter: player.isImposter,
                 currentRound: room.currentRound,
                 maxRounds: room.maxRounds,
-                players: room.players
+                players: room.players,
+                activeTurnPlayerId: activePlayer.id, // Who is allowed to type right now
+                activeTurnPlayerName: activePlayer.name
             });
         });
     }
 
-    // --- SUBMIT HINT ---
     socket.on('submitHint', ({ roomCode, hintText }) => {
         const room = rooms[roomCode];
         if (!room) return;
 
-        const player = room.players.find(p => p.id === socket.id);
-        if (player) {
-            player.hint = hintText.trim() || "🚨 Blind Hint!";
+        const expectedPlayer = room.players[room.currentTurnIndex];
+        if (socket.id !== expectedPlayer.id) return socket.emit('errorMsg', "It's not your turn to submit!");
+
+        expectedPlayer.hint = hintText.trim() || "🤐 Passed hint";
+
+        // Advance turn index logically around the array ring
+        room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
+        
+        // Check if everyone has answered yet
+        const subCount = room.players.filter(p => p.hint !== "").length;
+
+        if (subCount === room.players.length) {
+            // All players done! Let the host know they can hit reveal
+            io.to(roomCode).emit('hintSubmissionProgress', {
+                submittedCount: subCount,
+                totalCount: room.players.length,
+                players: room.players,
+                allDone: true
+            });
+        } else {
+            // Not done yet, refresh screens to update the public hint wall list live and change active focus
+            emitTurnState(roomCode);
         }
-
-        const submittedCount = room.players.filter(p => p.hint !== "").length;
-
-        // Tell everyone the live progress count
-        io.to(roomCode).emit('hintSubmissionProgress', {
-            submittedCount,
-            totalCount: room.players.length,
-            players: room.players
-        });
     });
 
-    // --- HOST FORCES REVEAL OF ALL HINTS ---
     socket.on('revealHints', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
-
-        // Fallback: If anyone didn't fill it out before host clicked next, give them a placeholder
-        room.players.forEach(p => {
-            if (!p.hint) p.hint = "🤐 No hint provided";
-        });
 
         io.to(roomCode).emit('allHintsSubmitted', {
             players: room.players
         });
     });
 
-    // --- VOTE OUT (HOST-ONLY) ---
     socket.on('castVote', ({ roomCode, votedPlayerId }) => {
         const room = rooms[roomCode];
         if (!room) return;
@@ -197,7 +210,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    // --- NEXT ROUND ---
     socket.on('nextRound', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
@@ -205,7 +217,6 @@ io.on('connection', (socket) => {
         startNewRound(roomCode);
     });
 
-    // --- RESTART GAME ---
     socket.on('restartGame', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
@@ -232,6 +243,9 @@ io.on('connection', (socket) => {
             const pIdx = room.players.findIndex(p => p.id === socket.id);
             if (pIdx !== -1) {
                 room.players.splice(pIdx, 1);
+                // Recalculate pNumbers dynamically so order doesn't break if someone drops out
+                room.players.forEach((p, idx) => p.pNumber = idx + 1);
+                
                 if (room.players.length === 0) {
                     delete rooms[roomCode];
                 } else {
@@ -250,4 +264,5 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
