@@ -25,10 +25,12 @@
         h1.logo { font-size: 2.5rem; font-weight: 800; text-align: center; background: var(--insta-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         h2 { font-size: 1.5rem; text-align: center; }
         .subtitle { text-align: center; color: var(--text-muted); font-size: 0.95rem; }
+        .p-badge { font-size: 0.75rem; background: #e2e8f0; color: #4a5568; padding: 2px 6px; border-radius: 6px; font-weight: 700; margin-left: 6px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         input, select { width: 100%; padding: 16px; border: 2px solid var(--border-color); border-radius: 14px; font-size: 1rem; outline: none; background-color: #fafafa; }
         input:focus, select:focus { border-color: #e6683c; }
         button { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 1rem; font-weight: 700; cursor: pointer; min-height: 55px; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; background: #cbd5e0 !important; color: #718096 !important; }
         .btn-gradient { background: var(--insta-gradient); color: white; }
         .btn-outline { background: transparent; border: 2px solid var(--border-color); color: var(--text-main); }
         .room-code-display { font-size: 2rem; font-weight: 800; letter-spacing: 4px; text-align: center; padding: 15px; background: #fffaf0; border: 2px dashed #f09433; border-radius: 14px; color: #e6683c; cursor: pointer; }
@@ -38,11 +40,8 @@
         .hint-card .p-name { font-size: 0.85rem; font-weight: 700; color: #dd6b20; text-transform: uppercase; }
         .hint-card .p-text { font-size: 1.15rem; font-weight: 800; color: var(--text-main); }
         .secret-box { background: #f7fafc; border: 2px solid var(--border-color); border-radius: 18px; padding: 30px; text-align: center; }
-        .category-header { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 5px; }
-        .category-value { font-size: 1.8rem; font-weight: 700; margin-bottom: 20px; }
-        .word-value { font-size: 2.2rem; font-weight: 800; color: #cc2366; }
-        .imposter-alert { font-size: 2rem; font-weight: 800; color: var(--btn-danger); }
         .live-score-bar { background: #edf2f7; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-align: center; }
+        .turn-banner { padding: 10px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 0.95rem; background: #feebc8; color: #c05621; border: 1px solid #fbd38d; }
     </style>
 </head>
 <body>
@@ -74,10 +73,9 @@
 
     <div id="screen-lobby" class="screen">
         <h2>Lobby Room</h2>
-        <p class="subtitle">Click the code box to copy your link to your friends!</p>
+        <p class="subtitle">Players keep their fixed P-Numbers for the entire game.</p>
         <div class="room-code-display" id="lobby-code" onclick="copyInviteLink()">----</div>
         <div>
-            <p class="subtitle" style="text-align: left; margin-bottom: 8px;">Connected Players:</p>
             <div id="lobby-player-list" class="player-list"></div>
         </div>
         <button id="start-game-btn" class="btn-gradient" style="display:none;" onclick="hostStartGame()">Start Game</button>
@@ -88,27 +86,33 @@
         <div class="live-score-bar" id="reveal-round-tracker">Round 1</div>
         <h2>Your Secret Role</h2>
         <div class="secret-box">
-            <div class="category-header">Category</div>
-            <div class="category-value" id="reveal-category">---</div>
-            <div class="category-header">Your Private Data</div>
-            <div id="reveal-secret-content">---</div>
+            <div class="category-header" style="font-size:0.9rem; text-transform:uppercase; color:var(--text-muted);">Category</div>
+            <div id="reveal-category" style="font-size:1.8rem; font-weight:700; margin-bottom:20px;">---</div>
+            <div class="category-header" style="font-size:0.9rem; text-transform:uppercase; color:var(--text-muted);">Your Private Data</div>
+            <div id="reveal-secret-content" style="font-size:2.2rem; font-weight:800;">---</div>
+        </div>
+        
+        <div id="current-turn-banner" class="turn-banner">Waiting...</div>
+
+        <div style="margin-top: 5px;">
+            <p class="subtitle" style="text-align:left; margin-bottom:5px; font-weight:700;">Dropped Hints So Far:</p>
+            <div id="live-stream-hints" class="hint-board" style="gap:6px;"></div>
         </div>
         
         <div class="input-group" id="hint-submission-zone">
-            <label class="subtitle" style="text-align:left; font-weight:700;">Write Your Hint:</label>
-            <input type="text" id="player-hint-input" placeholder="Example: 'long' for elephant" maxlength="25">
-            <button class="btn-gradient" id="submit-hint-btn" onclick="submitMyHint()">Submit Secret Hint</button>
+            <input type="text" id="player-hint-input" placeholder="Type your clue..." maxlength="25">
+            <button class="btn-gradient" id="submit-hint-btn" onclick="submitMyHint()">Submit Clue</button>
         </div>
         
-        <div id="hint-waiting-zone" style="display:none; text-align:center; flex-direction: column; gap: 15px;">
-            <p class="subtitle" id="hint-progress-text">Waiting for players to write... (0/0)</p>
-            <button id="host-reveal-btn" class="btn-gradient" style="display:none;" onclick="hostRevealAllHints()">Reveal All Hints ➔</button>
+        <div id="hint-waiting-zone" style="display:none; text-align:center; flex-direction: column; gap: 12px;">
+            <p class="subtitle" id="hint-progress-text">All clues gathered! Waiting for Host...</p>
+            <button id="host-reveal-btn" class="btn-gradient" style="display:none;" onclick="hostRevealAllHints()">Go To Accusation Phase ➔</button>
         </div>
     </div>
 
     <div id="screen-voting" class="screen">
         <h2>Analyze The Hints</h2>
-        <p id="voting-instruction-text" class="subtitle">Look at what everyone wrote, spot the liar!</p>
+        <p id="voting-instruction-text" class="subtitle">Look at the sequential output, find the fake text loop!</p>
         
         <div class="hint-board" id="revealed-hints-board"></div>
         
@@ -147,14 +151,9 @@
         document.getElementById(screenId).classList.add('active');
     }
 
-    function getName() {
-        return document.getElementById('player-name').value.trim() || "Anonymous";
-    }
-
-    function createRoom() {
-        socket.emit('createRoom', { rounds: document.getElementById('setup-rounds').value });
-    }
-
+    function getName() { return document.getElementById('player-name').value.trim() || "Anonymous"; }
+    function createRoom() { socket.emit('createRoom', { rounds: document.getElementById('setup-rounds').value }); }
+    
     function joinRoom() {
         const code = document.getElementById('join-code').value.toUpperCase().trim();
         if(code.length !== 4) return alert("Enter a 4-letter room code!");
@@ -174,26 +173,14 @@
     
     function submitMyHint() {
         const txt = document.getElementById('player-hint-input').value.trim();
-        if(!txt) return alert("Please type a hint before submitting!");
-        
-        document.getElementById('hint-submission-zone').style.display = 'none';
-        document.getElementById('hint-waiting-zone').style.display = 'flex';
-        
-        // Show next button to host immediately so they have total override power
-        document.getElementById('host-reveal-btn').style.display = amIHost ? 'block' : 'none';
-        
+        if(!txt) return alert("Please type something before submitting!");
         socket.emit('submitHint', { roomCode: myRoomCode, hintText: txt });
     }
 
-    function hostRevealAllHints() {
-        socket.emit('revealHints', { roomCode: myRoomCode });
-    }
+    function hostRevealAllHints() { socket.emit('revealHints', { roomCode: myRoomCode }); }
 
     function castVote(targetId) { 
-        if (!amIHost) {
-            alert("Only the Host can lock in the group's choice!");
-            return;
-        }
+        if (!amIHost) return alert("Only the Host can lock in the choice!");
         socket.emit('castVote', { roomCode: myRoomCode, votedPlayerId: targetId }); 
     }
 
@@ -215,41 +202,83 @@
         const list = document.getElementById('lobby-player-list');
         list.innerHTML = players.map(p => `
             <div class="player-chip">
-                <span>${p.name} ${p.id === hostId ? '👑' : ''}</span>
-                <span style="color:var(--btn-success)">Connected</span>
+                <span>${p.name} <span class="p-badge">P${p.pNumber}</span> ${p.id === hostId ? '👑' : ''}</span>
+                <span style="color:var(--btn-success)">Ready</span>
             </div>
         `).join('');
 
         navigateTo('screen-lobby');
     });
 
-    socket.on('roundStarted', ({ category, word, isImposter, currentRound, maxRounds, players }) => {
+    socket.on('roundStarted', ({ category, word, isImposter, currentRound, maxRounds, players, activeTurnPlayerId, activeTurnPlayerName }) => {
         document.getElementById('reveal-round-tracker').innerText = `Round ${currentRound} of ${maxRounds}`;
         document.getElementById('reveal-category').innerText = category;
         
-        document.getElementById('player-hint-input').value = "";
-        document.getElementById('hint-submission-zone').style.display = 'flex';
-        document.getElementById('hint-waiting-zone').style.display = 'none';
-        document.getElementById('host-reveal-btn').style.display = 'none';
+        navigateTo('screen-reveal');
 
+        // Render Secret Card Display Content
         const content = document.getElementById('reveal-secret-content');
         if(isImposter) {
             content.className = "imposter-alert";
+            content.style.color = "var(--btn-danger)";
             content.innerText = "⚠️ YOU ARE THE IMPOSTER";
         } else {
             content.className = "word-value";
+            content.style.color = "#cc2366";
             content.innerText = word;
         }
 
+        // Display Live Answer Stream Wall 
+        const stream = document.getElementById('live-stream-hints');
+        const submittedPlayers = players.filter(p => p.hint !== "");
+        if (submittedPlayers.length === 0) {
+            stream.innerHTML = `<p class="subtitle" style="text-align:center; font-style:italic;">No clues posted yet...</p>`;
+        } else {
+            stream.innerHTML = submittedPlayers.map(p => `
+                <div style="background:#f7fafc; padding:8px 12px; border-radius:8px; border-left:4px solid #e6683c; font-size:0.9rem; display:flex; justify-content:space-between;">
+                    <strong>${p.name} <span class="p-badge">P${p.pNumber}</span></strong>
+                    <span>"${p.hint}"</span>
+                </div>
+            `).join('');
+        }
+
+        // Turn Logic System
+        const banner = document.getElementById('current-turn-banner');
+        const inputZone = document.getElementById('hint-submission-zone');
+        const waitingZone = document.getElementById('hint-waiting-zone');
+
+        inputZone.style.display = 'flex';
+        waitingZone.style.display = 'none';
+
+        if (socket.id === activeTurnPlayerId) {
+            banner.innerText = "🟢 IT'S YOUR TURN! Submit your clue.";
+            banner.style.background = "#c6f6d5";
+            banner.style.color = "#22543d";
+            banner.style.borderColor = "#9ae6b4";
+            document.getElementById('player-hint-input').disabled = false;
+            document.getElementById('submit-hint-btn').disabled = false;
+        } else {
+            banner.innerText = `⏳ Waiting for ${activeTurnPlayerName} to type...`;
+            banner.style.background = "#feebc8";
+            banner.style.color = "#c05621";
+            banner.style.borderColor = "#fbd38d";
+            document.getElementById('player-hint-input').disabled = true;
+            document.getElementById('submit-hint-btn').disabled = true;
+        }
+
         document.getElementById('voting-scoreboard').innerHTML = "Live Scores: " + players.map(p => `${p.name}: ${p.points}`).join(' | ');
-        navigateTo('screen-reveal');
     });
 
-    socket.on('hintSubmissionProgress', ({ submittedCount, totalCount }) => {
-        document.getElementById('hint-progress-text').innerText = `Waiting for players to write... (${submittedCount}/${totalCount})`;
-        // Ensure host button shows up even if host submits hint last
-        if (amIHost && document.getElementById('hint-waiting-zone').style.display === 'flex') {
-            document.getElementById('host-reveal-btn').style.display = 'block';
+    socket.on('hintSubmissionProgress', ({ submittedCount, totalCount, players, allDone }) => {
+        if (allDone) {
+            document.getElementById('hint-submission-zone').style.display = 'none';
+            document.getElementById('hint-waiting-zone').style.display = 'flex';
+            document.getElementById('current-turn-banner').innerText = "✅ Everyone has submitted!";
+            document.getElementById('current-turn-banner').style.background = "#edf2f7";
+            document.getElementById('current-turn-banner').style.color = "#4a5568";
+            document.getElementById('current-turn-banner').style.borderColor = "#cbd5e0";
+            
+            document.getElementById('host-reveal-btn').style.display = amIHost ? 'block' : 'none';
         }
     });
 
@@ -257,22 +286,20 @@
         const board = document.getElementById('revealed-hints-board');
         board.innerHTML = players.map(p => `
             <div class="hint-card">
-                <div class="p-name">${p.name}</div>
+                <div class="p-name">${p.name} <span class="p-badge">P${p.pNumber}</span></div>
                 <div class="p-text">"${p.hint}"</div>
             </div>
         `).join('');
 
         const instructionText = document.getElementById('voting-instruction-text');
-        if (amIHost) {
-            instructionText.innerHTML = "<strong>You are the Host.</strong> Analyze the clues with your group, then click a suspect below!";
-        } else {
-            instructionText.innerText = "Spot the imposter's clue and tell the Host who to accuse!";
-        }
+        instructionText.innerHTML = amIHost 
+            ? "<strong>You are the Host.</strong> Analyze the sequential patterns, then click a target player below!"
+            : "Review the chain of hints and call out the fake clue to your Host!";
 
         const optionsGrid = document.getElementById('voting-options');
         optionsGrid.innerHTML = players.map(p => `
             <button class="btn-outline" style="${!amIHost ? 'opacity: 0.6; cursor: not-allowed;' : ''}" onclick="castVote('${p.id}')">
-                ${amIHost ? `Accuse ${p.name}` : `Tell Host to Vote: ${p.name}`}
+                ${amIHost ? `Accuse ${p.name}` : `Accuse Target: ${p.name}`}
             </button>
         `).join('');
 
@@ -284,13 +311,13 @@
         
         if (isGameOver) {
             document.getElementById('host-next-btn').style.display = 'none';
-            document.getElementById('client-next-msg').innerText = "Game finished! Loading standings...";
+            document.getElementById('client-next-msg').innerText = "Game over! Gathering scores...";
             setTimeout(() => {
                 const finalGrid = document.getElementById('final-scoreboard');
                 const sorted = [...players].sort((a,b) => b.points - a.points);
                 finalGrid.innerHTML = sorted.map((p, idx) => `
                     <div class="player-chip" style="${idx===0 ? 'background:#fffaf0;' : ''}">
-                        <span><strong>${idx===0?'🥇':idx===1?'🥈':'👤'} ${p.name}</strong></span>
+                        <span><strong>${idx===0?'🥇':idx===1?'🥈':'👤'} ${p.name} <span class="p-badge">P${p.pNumber}</span></strong></span>
                         <strong>${p.points} Pts</strong>
                     </div>
                 `).join('');
