@@ -42,15 +42,37 @@
         .secret-box { background: #f7fafc; border: 2px solid var(--border-color); border-radius: 18px; padding: 30px; text-align: center; }
         .live-score-bar { background: #edf2f7; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-align: center; }
         .turn-banner { padding: 10px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 0.95rem; background: #feebc8; color: #c05621; border: 1px solid #fbd38d; }
+
+        .logo-container {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.v-tag {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: #e2e8f0;
+    padding: 2px 6px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+    
     </style>
 </head>
 <body>
 
 <div class="game-container">
 
-    <div id="screen-main" class="screen active">
+   <div id="screen-main" class="screen active">
+    <div class="logo-container">
         <h1 class="logo">Ain't Gonna Lie</h1>
-        <p class="subtitle">Enter your name and join or create a lobby.</p>
+        <span class="v-tag">v1.2.0</span>
+    </div>
+    <p class="subtitle">Enter your name and join or create a lobby.</p>
         <div class="input-group">
             <input type="text" id="player-name" placeholder="Your Display Name" maxlength="15">
         </div>
