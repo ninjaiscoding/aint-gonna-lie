@@ -165,6 +165,35 @@
         <button id="host-restart-btn" class="btn-gradient" style="display:none;" onclick="hostRestartGame()">Play Again</button>
     </div>
 
+    <button id="host-emergency-reset-btn" class="btn-outline" style="display:none; margin-top:15px; border-color:var(--btn-danger); color:var(--btn-danger); padding:10px; min-height:40px; font-size:0.85rem;" onclick="hostRestartGame()">
+        🚨 Force Reset Game to Lobby
+    </button>
+
+</div> ```
+
+#### 2. Update the JavaScript Logic
+Now update your `<script>` logic at the bottom to control when this button shows up, and listen for the server's reset broadcast.
+
+First, update your `MapsTo` function so it hides or shows the emergency reset button automatically based on whether you are the host and which screen you are looking at:
+
+```javascript
+    function navigateTo(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        
+        // Manage the emergency reset button visibility
+        const emergencyBtn = document.getElementById('host-emergency-reset-btn');
+        const activeGameplayScreens = ['screen-reveal', 'screen-voting', 'screen-result'];
+        
+        if (amIHost && activeGameplayScreens.includes(screenId)) {
+            emergencyBtn.style.display = 'block';
+        } else {
+            emergencyBtn.style.display = 'none';
+        }
+    }
+
+
+    
 </div>
 
 <script>
@@ -227,6 +256,29 @@
         myRoomCode = code;
         amIHost = true;
         socket.emit('joinRoom', { roomCode: code, playerName: getName() });
+    });
+
+    socket.on('gameRestartedByHost', ({ roomCode, players, hostId, gameStarted }) => {
+        alert("The host has reset the match! Returning to lobby.");
+        
+        // Clear out old UI inputs
+        document.getElementById('player-hint-input').value = "";
+        
+        // This instantly updates the lobby list and sends them to screen-lobby
+        amIHost = (socket.id === hostId);
+        document.getElementById('lobby-code').innerText = roomCode;
+        document.getElementById('start-game-btn').style.display = amIHost ? 'block' : 'none';
+        document.getElementById('waiting-msg').style.display = amIHost ? 'none' : 'block';
+
+        const list = document.getElementById('lobby-player-list');
+        list.innerHTML = players.map(p => `
+            <div class="player-chip">
+                <span>${p.name} <span class="p-badge">P${p.pNumber}</span> ${p.id === hostId ? '👑' : ''}</span>
+                <span style="color:var(--btn-success)">Ready</span>
+            </div>
+        `).join('');
+
+        navigateTo('screen-lobby');
     });
 
     socket.on('roomUpdated', ({ roomCode, players, hostId, gameStarted }) => {
