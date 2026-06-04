@@ -53,7 +53,7 @@
     <div id="screen-main" class="screen active">
         <div class="logo-container">
             <h1 class="logo">Ain't Gonna Lie</h1>
-            <span class="v-tag">v1.3.0</span>
+            <span class="v-tag">v1.4.0</span>
         </div>
         <p class="subtitle">Enter your name and join or create a lobby.</p>
         <div class="input-group">
@@ -169,31 +169,6 @@
         🚨 Force Reset Game to Lobby
     </button>
 
-</div> ```
-
-#### 2. Update the JavaScript Logic
-Now update your `<script>` logic at the bottom to control when this button shows up, and listen for the server's reset broadcast.
-
-First, update your `MapsTo` function so it hides or shows the emergency reset button automatically based on whether you are the host and which screen you are looking at:
-
-```javascript
-    function navigateTo(screenId) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(screenId).classList.add('active');
-        
-        // Manage the emergency reset button visibility
-        const emergencyBtn = document.getElementById('host-emergency-reset-btn');
-        const activeGameplayScreens = ['screen-reveal', 'screen-voting', 'screen-result'];
-        
-        if (amIHost && activeGameplayScreens.includes(screenId)) {
-            emergencyBtn.style.display = 'block';
-        } else {
-            emergencyBtn.style.display = 'none';
-        }
-    }
-
-
-    
 </div>
 
 <script>
@@ -210,6 +185,15 @@ First, update your `MapsTo` function so it hides or shows the emergency reset bu
     function navigateTo(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
+        
+        const emergencyBtn = document.getElementById('host-emergency-reset-btn');
+        const activeGameplayScreens = ['screen-reveal', 'screen-voting', 'screen-result'];
+        
+        if (amIHost && activeGameplayScreens.includes(screenId)) {
+            emergencyBtn.style.display = 'block';
+        } else {
+            emergencyBtn.style.display = 'none';
+        }
     }
 
     function getName() { return document.getElementById('player-name').value.trim() || "Anonymous"; }
