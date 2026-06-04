@@ -224,23 +224,26 @@ io.on('connection', (socket) => {
         room.currentRound++;
         startNewRound(roomCode);
     });
-
-    socket.on('restartGame', ({ roomCode }) => {
+socket.on('restartGame', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
 
         room.currentRound = 1;
         room.gameStarted = false;
-        room.players.forEach(p => { p.points = 0; p.hint = ""; });
+        room.players.forEach(p => { 
+            p.points = 0; 
+            p.hint = ""; 
+        });
         room.playedCombinations = [];
 
-        // If it was random mode, pick a new random category for the fresh match
+        // Re-roll category if they were on random mode
         if (room.categoryMode === "random") {
             const keys = Object.keys(gameDatabase);
             room.lockedCategory = keys[Math.floor(Math.random() * keys.length)];
         }
         
-        io.to(roomCode).emit('roomUpdated', {
+        // Let everyone know the game has reset back to the lobby screen
+        io.to(roomCode).emit('gameRestartedByHost', {
             roomCode,
             players: room.players,
             hostId: room.hostId,
