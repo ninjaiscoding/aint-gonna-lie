@@ -250,8 +250,7 @@ socket.on('restartGame', ({ roomCode }) => {
             gameStarted: room.gameStarted
         });
     });
-
-    socket.on('disconnect', () => {
+socket.on('disconnect', () => {
         for (const roomCode in rooms) {
             const room = rooms[roomCode];
             const pIdx = room.players.findIndex(p => p.id === socket.id);
@@ -274,7 +273,7 @@ socket.on('restartGame', ({ roomCode }) => {
             }
         }
     });
-});
+}); // <--- Make sure this bracket + parenthesis closes io.on('connection')
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
