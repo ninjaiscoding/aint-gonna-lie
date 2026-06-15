@@ -412,15 +412,15 @@
             content.innerText = word;
         }
 
-        const stream = document.getElementById('live-stream-hints');
+     const stream = document.getElementById('live-stream-hints');
         const submittedPlayers = players.filter(p => p.hint !== "");
         if (submittedPlayers.length === 0) {
             stream.innerHTML = `<p class="subtitle" style="text-align:center; font-style:italic;">No clues posted yet...</p>`;
         } else {
             stream.innerHTML = submittedPlayers.map(p => `
-                <div style="background:#f7fafc; padding:8px 12px; border-radius:8px; border-left:4px solid #e6683c; font-size:0.9rem; display:flex; justify-content:space-between;">
-                    <strong>${p.name} <span class="p-badge">P${p.pNumber}</span></strong>
-                    <span>"${p.hint}"</span>
+                <div style="background:#1c1c1e; color:var(--text-main); border:1px solid var(--border-color); padding:10px 14px; border-radius:8px; font-size:0.9rem; display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="color:var(--text-main);">${p.name} <span class="p-badge">P${p.pNumber}</span></strong>
+                    <span style="color:var(--text-muted); font-weight:500;">"${p.hint}"</span>
                 </div>
             `).join('');
         }
