@@ -8,11 +8,16 @@
         :root {
             --bg-dark: #0f172a;
             --panel-bg: #1e293b;
-            --accent: #6366f1;
-            --accent-hover: #4f46e5;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --border: #334155;
+            --green-accent: #10b981;
+            --green-hover: #059669;
+            --blue-accent: #0095f6;
+            --blue-hover: #0077c8;
+            /* Dynamic active color configuration controlled by script */
+            --current-accent: var(--green-accent);
+            --current-hover: var(--green-hover);
         }
 
         * {
@@ -75,9 +80,16 @@
             transition: all 0.2s;
         }
 
-        .mode-btn.active {
-            border-color: var(--accent);
-            background: rgba(99, 102, 241, 0.1);
+        /* Specific colors assigned to individual mode buttons */
+        .mode-btn.standard-btn.active {
+            border-color: var(--green-accent);
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--text-main);
+        }
+
+        .mode-btn.duel-btn.active {
+            border-color: var(--blue-accent);
+            background: rgba(0, 149, 246, 0.1);
             color: var(--text-main);
         }
 
@@ -94,7 +106,7 @@
         }
 
         .search-box:focus {
-            border-color: var(--accent);
+            border-color: var(--current-accent);
         }
 
         .category-scroll-area {
@@ -134,15 +146,15 @@
         }
 
         .category-btn.selected {
-            background: var(--accent);
-            border-color: var(--accent);
+            background: var(--current-accent);
+            border-color: var(--current-accent);
             color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .action-btn {
             width: 100%;
-            background: var(--accent);
+            background: var(--current-accent);
             color: white;
             border: none;
             padding: 16px;
@@ -154,10 +166,9 @@
         }
 
         .action-btn:hover {
-            background: var(--accent-hover);
+            background: var(--current-hover);
         }
 
-        /* Custom Scrollbar */
         .category-scroll-area::-webkit-scrollbar {
             width: 8px;
         }
@@ -168,9 +179,6 @@
             background: var(--border);
             border-radius: 4px;
         }
-        .category-scroll-area::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
-        }
     </style>
 </head>
 <body>
@@ -179,37 +187,31 @@
     <h1>Ain't Gonna Lie</h1>
     <div class="subtitle">Select your mode and category to start the duel</div>
 
-    <!-- Game Mode Selection -->
     <div class="game-modes">
-        <button class="mode-btn active" onclick="setMode('standard')">Ain't Gonna Lie (Standard)</button>
-        <button class="mode-btn" onclick="setMode('duel')">Ain't My Word (Duel)</button>
+        <button class="mode-btn standard-btn active" onclick="setMode('aous', this)">Ain't Gonna Lie (Standard)</button>
+        <button class="mode-btn duel-btn" onclick="setMode('amw', this)">Ain't My Word (Duel)</button>
     </div>
 
-    <!-- Search / Filter bar -->
     <input type="text" id="searchBar" class="search-box" placeholder="Search categories..." oninput="filterCategories()">
 
-    <!-- Scrollable Grid Container -->
     <div class="category-scroll-area">
-        <div id="categoryGrid" class="category-grid">
-            <!-- Dynamically populated -->
-        </div>
+        <div id="categoryGrid" class="category-grid"></div>
     </div>
 
     <button class="action-btn" onclick="startGame()">Launch Game</button>
 </div>
 
 <script>
-    let currentMode = 'standard';
+    let currentMode = 'aous';
     let selectedCategory = '';
 
-    // Full list of 24 rich categories shared across both modes
+    // Exactly 23 clean categories imported directly from your database
     const categories = [
-        "Pop Culture", "Movies & TV", "Gaming", "Anime & Manga", 
-        "Tech & Coding", "Superheroes", "Internet Memes", "History",
-        "Science & Space", "Animals & Nature", "World Geography", "Sports",
-        "Music & Artists", "Books & Literature", "Food & Cooking", "Brands & Logos",
-        "Mythology", "90s Nostalgia", "Travel & Places", "Vehicles & Cars",
-        "Celebrities", "Cartoons", "Board Games", "School Subjects"
+        "Animals", "Electronics", "Countries", "Food", "Sports", "Fruits", 
+        "Vegetables", "Clothing", "School Subjects", "Jobs", "Colors", "Vehicles", 
+        "Furniture", "Musical Instruments", "Hobbies", "Weather", "Family Members", 
+        "Rooms in a House", "Shapes and Space", "Toys and Games", "Video Games", 
+        "Anime", "Cartoon"
     ];
 
     function displayCategories() {
@@ -230,10 +232,20 @@
         displayCategories();
     }
 
-    function setMode(mode) {
+    function setMode(mode, element) {
         currentMode = mode;
         document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+        element.classList.add('active');
+
+        // Dynamically shift visual colors between Green and Blue accents
+        const root = document.documentElement;
+        if (mode === 'aous') {
+            root.style.setProperty('--current-accent', 'var(--green-accent)');
+            root.style.setProperty('--current-hover', 'var(--green-hover)');
+        } else {
+            root.style.setProperty('--current-accent', 'var(--blue-accent)');
+            root.style.setProperty('--current-hover', 'var(--blue-hover)');
+        }
     }
 
     function filterCategories() {
@@ -242,11 +254,7 @@
         
         buttons.forEach(btn => {
             const text = btn.textContent.toLowerCase();
-            if(text.includes(query)) {
-                btn.style.display = 'block';
-            } else {
-                btn.style.display = 'none';
-            }
+            btn.style.display = text.includes(query) ? 'block' : 'none';
         });
     }
 
@@ -255,20 +263,10 @@
             alert('Please select a category first!');
             return;
         }
-        
-        // Send choice to back-end
-        fetch('/api/start-game', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: currentMode, category: selectedCategory })
-        })
-        .then(res => res.json())
-        .then(data => {
-            alert(`Starting ${currentMode === 'standard' ? "Ain't Gonna Lie" : "Ain't My Word"} under "${selectedCategory}"!`);
-        });
+        // Proceed with your standard socket logic passing (currentMode, selectedCategory)
+        alert(`Setting room configuration to Mode: ${currentMode} | Category: ${selectedCategory}`);
     }
 
-    // Initial render
     displayCategories();
 </script>
 
