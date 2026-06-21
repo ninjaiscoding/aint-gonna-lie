@@ -8,7 +8,6 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(__dirname));
 
-// --- 23 CATEGORIES DATABASE (50 WORDS EACH) ---
 const gameDatabase = {
     "Animals": ["Lion", "Tiger", "Elephant", "Giraffe", "Kangaroo", "Dog", "Cat", "Rabbit", "Bear", "Wolf", "Deer", "Fox", "Zebra", "Monkey", "Hippo", "Rhino", "Cheetah", "Leopard", "Panda", "Koala", "Horse", "Cow", "Pig", "Sheep", "Goat", "Donkey", "Camel", "Squirrel", "Mouse", "Rat", "Bat", "Frog", "Toad", "Turtle", "Snake", "Lizard", "Crocodile", "Alligator", "Dolphin", "Whale", "Shark", "Seal", "Octopus", "Crab", "Lobster", "Eagle", "Hawk", "Owl", "Parrot", "Penguin"],
     "Electronics": ["Smartphone", "Laptop", "Television", "Tablet", "Computer", "Smartwatch", "Headphones", "Earbuds", "Speaker", "Camera", "Drone", "Projector", "Printer", "Scanner", "Router", "Modem", "Monitor", "Keyboard", "Mouse", "Microphone", "Webcam", "Charger", "Battery", "Flashlight", "Calculated", "Console", "Controller", "Thermostat", "Refrigerator", "Microwave", "Toaster", "Blender", "Oven", "Dishwasher", "Vacuum", "Fan", "Heater", "Airconditioner", "Lamp", "Clock", "Radio", "Player", "Recorder", "Adapter", "Cable", "Plug", "Switch", "Sensor", "Remote", "Scale"],
@@ -39,7 +38,7 @@ const rooms = {};
 
 io.on('connection', (socket) => {
 
-    socket.on('createRoom', ({ rounds, categoryMode }) => {
+    socket.on('createRoom', ({ rounds, categoryMode, gameMode }) => {
         const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
         
         let lockedCategory = null;
@@ -53,7 +52,7 @@ io.on('connection', (socket) => {
         rooms[roomCode] = {
             code: roomCode,
             hostId: socket.id,
-            maxRounds: parseInt(rounds) || 5,
+            maxRounds: gameMode === "amw" ? 2 : (parseInt(rounds) || 5), // AMW inherently runs 2 rounds so both guess once
             currentRound: 1,
             players: [],
             gameStarted: false,
@@ -63,7 +62,15 @@ io.on('connection', (socket) => {
             playedCombinations: [],
             currentTurnIndex: 0,
             categoryMode: categoryMode, 
-            lockedCategory: lockedCategory
+            lockedCategory: lockedCategory,
+            gameMode: gameMode || "aous", // "aous" = Ain't One of Us, "amw" = Ain't My Word
+            amwData: {
+                noCount: 0,
+                p1Word: "",
+                p2Word: "",
+                guesserId: null,
+                answererId: null
+            }
         };
         socket.emit('roomCreated', roomCode);
     });
@@ -72,6 +79,10 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room) return socket.emit('errorMsg', 'Room not found.');
         if (room.gameStarted) return socket.emit('errorMsg', 'Game already in progress.');
+        
+        if (room.gameMode === "amw" && room.players.length >= 2) {
+            return socket.emit('errorMsg', 'This game mode is limited strictly to 2 players.');
+        }
         if (room.players.length >= 10) return socket.emit('errorMsg', 'Room is full.');
 
         const existingPlayerIndex = room.players.findIndex(p => p.id === socket.id);
@@ -85,8 +96,6 @@ io.on('connection', (socket) => {
                 pNumber: room.players.length + 1
             };
             room.players.push(newPlayer);
-        } else {
-            room.players[existingPlayerIndex].name = playerName || room.players[existingPlayerIndex].name;
         }
 
         socket.join(roomCode);
@@ -95,13 +104,19 @@ io.on('connection', (socket) => {
             roomCode,
             players: room.players,
             hostId: room.hostId,
-            gameStarted: room.gameStarted
+            gameStarted: room.gameStarted,
+            gameMode: room.gameMode
         });
     });
 
     socket.on('startGame', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
+        
+        if (room.gameMode === "amw" && room.players.length !== 2) {
+            return socket.emit('errorMsg', 'Need exactly 2 players to start Ain\'t My Word!');
+        }
+
         room.gameStarted = true;
         startNewRound(roomCode);
     });
@@ -111,40 +126,60 @@ io.on('connection', (socket) => {
         if (!room) return;
         const categories = Object.keys(gameDatabase);
         
-        let chosenCategory = "";
-        let chosenWord = "";
-        let attempts = 0;
-
-        while (attempts < 100) {
-            if (room.lockedCategory) {
-                chosenCategory = room.lockedCategory;
-            } else {
-                chosenCategory = categories[Math.floor(Math.random() * categories.length)];
-            }
-
-            const wordList = gameDatabase[chosenCategory];
-            chosenWord = wordList[Math.floor(Math.random() * wordList.length)];
-            
-            const comboKey = `${chosenCategory}:${chosenWord}`;
-            if (!room.playedCombinations.includes(comboKey)) {
-                room.playedCombinations.push(comboKey);
-                break;
-            }
-            attempts++;
-        }
-
+        let chosenCategory = room.lockedCategory || categories[Math.floor(Math.random() * categories.length)];
         room.currentCategory = chosenCategory;
-        room.currentWord = chosenWord;
-        
-        const imposterIndex = Math.floor(Math.random() * room.players.length);
-        room.players.forEach((p, idx) => {
-            p.isImposter = (idx === imposterIndex);
-            p.hint = "";
-            if (p.isImposter) room.imposterId = p.id;
-        });
 
-        room.currentTurnIndex = (room.currentRound - 1) % room.players.length;
-        emitTurnState(roomCode);
+        const wordList = gameDatabase[chosenCategory];
+
+        if (room.gameMode === "amw") {
+            // Setup Ain't My Word Mode Data structures
+            let w1 = wordList[Math.floor(Math.random() * wordList.length)];
+            let w2 = wordList[Math.floor(Math.random() * wordList.length)];
+            while (w1 === w2) {
+                w2 = wordList[Math.floor(Math.random() * wordList.length)];
+            }
+            
+            room.amwData.p1Word = w1; // Assigned secretly to P1
+            room.amwData.p2Word = w2; // Assigned secretly to P2
+            room.amwData.noCount = 0;
+
+            if (room.currentRound === 1) {
+                room.amwData.guesserId = room.players[0].id; // P1 Guesses first
+                room.amwData.answererId = room.players[1].id;
+            } else {
+                room.amwData.guesserId = room.players[1].id; // P2 Guesses second
+                room.amwData.answererId = room.players[0].id;
+            }
+
+            io.to(roomCode).emit('amwRoundStarted', {
+                category: room.currentCategory,
+                currentRound: room.currentRound,
+                maxRounds: room.maxRounds,
+                players: room.players,
+                amwData: room.amwData
+            });
+
+        } else {
+            // Classic "Ain't One of Us" Mode Loop
+            let chosenWord = wordList[Math.floor(Math.random() * wordList.length)];
+            let attempts = 0;
+            while (room.playedCombinations.includes(`${chosenCategory}:${chosenWord}`) && attempts < 50) {
+                chosenWord = wordList[Math.floor(Math.random() * wordList.length)];
+                attempts++;
+            }
+            room.playedCombinations.push(`${chosenCategory}:${chosenWord}`);
+            room.currentWord = chosenWord;
+            
+            const imposterIndex = Math.floor(Math.random() * room.players.length);
+            room.players.forEach((p, idx) => {
+                p.isImposter = (idx === imposterIndex);
+                p.hint = "";
+                if (p.isImposter) room.imposterId = p.id;
+            });
+
+            room.currentTurnIndex = (room.currentRound - 1) % room.players.length;
+            emitTurnState(roomCode);
+        }
     }
 
     function emitTurnState(roomCode) {
@@ -166,12 +201,68 @@ io.on('connection', (socket) => {
         });
     }
 
+    // --- "AIN'T MY WORD" REAL-TIME EVENTS ---
+    socket.on('amwUpdateNoCount', ({ roomCode, count }) => {
+        const room = rooms[roomCode];
+        if (!room || room.gameMode !== "amw") return;
+        
+        room.amwData.noCount = count;
+        
+        io.to(roomCode).emit('amwNoCountUpdated', { noCount: room.amwData.noCount });
+
+        if (room.amwData.noCount >= 10) {
+            // Answerer wins the round because 10 NOs checked out
+            const answerer = room.players.find(p => p.id === room.amwData.answererId);
+            const guesser = room.players.find(p => p.id === room.amwData.guesserId);
+            answerer.points += 1;
+
+            let targetWord = room.amwData.guesserId === room.players[0].id ? room.amwData.p2Word : room.amwData.p1Word;
+
+            let html = `<h3 style="color:#ed4956; font-size:1.5rem; margin-bottom:10px;">Out of Answers!</h3>
+            <p><strong>${answerer.name}</strong> won this round by defending their word successfully!</p>
+            <p style="margin-top:10px; color:#0095f6;">The word <strong>${guesser.name}</strong> was failing to guess: <strong>${targetWord}</strong></p><br>`;
+
+            io.to(roomCode).emit('roundResult', {
+                pointsSummaryHtml: html,
+                players: room.players,
+                isGameOver: room.currentRound >= room.maxRounds
+            });
+        }
+    });
+
+    socket.on('amwSubmitGuess', ({ roomCode, guessText }) => {
+        const room = rooms[roomCode];
+        if (!room || room.gameMode !== "amw") return;
+
+        const guesser = room.players.find(p => p.id === room.amwData.guesserId);
+        const answerer = room.players.find(p => p.id === room.amwData.answererId);
+        
+        // Target word is what the answerer holds secretly
+        let targetWord = room.amwData.guesserId === room.players[0].id ? room.amwData.p2Word : room.amwData.p1Word;
+
+        if (guessText.trim().toLowerCase() === targetWord.toLowerCase()) {
+            guesser.points += 1;
+            let html = `<h3 style="color:#0095f6; font-size:1.5rem; margin-bottom:10px;">Correct Guess!</h3>
+            <p><strong>${guesser.name}</strong> cracked the code and guessed the word correctly!</p>
+            <p style="margin-top:10px; color:#0095f6;">The secret word was indeed: <strong>${targetWord}</strong></p><br>`;
+
+            io.to(roomCode).emit('roundResult', {
+                pointsSummaryHtml: html,
+                players: room.players,
+                isGameOver: room.currentRound >= room.maxRounds
+            });
+        } else {
+            socket.emit('errorMsg', "Wrong guess! Keep asking questions.");
+        }
+    });
+
+    // --- CLASSIC MODE EVENTS ---
     socket.on('submitHint', ({ roomCode, hintText }) => {
         const room = rooms[roomCode];
         if (!room) return;
 
         const expectedPlayer = room.players[room.currentTurnIndex];
-        if (socket.id !== expectedPlayer.id) return socket.emit('errorMsg', "It's not your turn to submit!");
+        if (socket.id !== expectedPlayer.id) return;
 
         expectedPlayer.hint = hintText.trim() || "🤐 Passed hint";
         room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
@@ -179,12 +270,7 @@ io.on('connection', (socket) => {
         const subCount = room.players.filter(p => p.hint !== "").length;
 
         if (subCount === room.players.length) {
-            io.to(roomCode).emit('hintSubmissionProgress', {
-                submittedCount: subCount,
-                totalCount: room.players.length,
-                players: room.players,
-                allDone: true
-            });
+            io.to(roomCode).emit('hintSubmissionProgress', { allDone: true });
         } else {
             emitTurnState(roomCode);
         }
@@ -204,13 +290,13 @@ io.on('connection', (socket) => {
         const imposter = room.players.find(p => p.isImposter);
 
         if (votedPlayerId === room.imposterId) {
-            pointsSummaryHtml = `<h3 style="color:#48bb78; font-size:1.5rem; margin-bottom:10px;">Imposter Caught!</h3>
+            pointsSummaryHtml = `<h3 style="color:#0095f6; font-size:1.5rem; margin-bottom:10px;">Imposter Caught!</h3>
             <p>The group successfully voted out <strong>${imposter.name}</strong>.</p>
             <p style="margin-top:10px; color:#cc2366;">The secret word was: <strong>${room.currentWord}</strong></p><br>`;
             room.players.forEach(p => { if (!p.isImposter) p.points += 1; });
         } else {
             const victim = room.players.find(p => p.id === votedPlayerId);
-            pointsSummaryHtml = `<h3 style="color:#f56565; font-size:1.5rem; margin-bottom:10px;">Wrong Accusation!</h3>
+            pointsSummaryHtml = `<h3 style="color:#ed4956; font-size:1.5rem; margin-bottom:10px;">Wrong Accusation!</h3>
             <p>The group voted out <strong>${victim.name}</strong>.</p>
             <p style="margin-top:10px; color:#cc2366;">The real imposter was <strong>${imposter.name}</strong>!</p>
             <p>The secret word was: <strong>${room.currentWord}</strong></p><br>`;
@@ -249,7 +335,8 @@ io.on('connection', (socket) => {
             roomCode,
             players: room.players,
             hostId: room.hostId,
-            gameStarted: room.gameStarted
+            gameStarted: room.gameStarted,
+            gameMode: room.gameMode
         });
     });
 
@@ -269,7 +356,8 @@ io.on('connection', (socket) => {
                         roomCode,
                         players: room.players,
                         hostId: room.hostId,
-                        gameStarted: room.gameStarted
+                        gameStarted: room.gameStarted,
+                        gameMode: room.gameMode
                     });
                 }
                 break;
