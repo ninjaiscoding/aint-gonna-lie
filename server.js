@@ -126,26 +126,29 @@ io.on('connection', (socket) => {
         if (!room) return;
         const categories = Object.keys(gameDatabase);
         
+        // Pick Category (Keep it locked if it was preselected)
         let chosenCategory = room.lockedCategory || categories[Math.floor(Math.random() * categories.length)];
         room.currentCategory = chosenCategory;
 
         const wordList = gameDatabase[chosenCategory];
 
         if (room.gameMode === "amw") {
-            let w1 = wordList[Math.floor(Math.random() * wordList.length)];
-            let w2 = wordList[Math.floor(Math.random() * wordList.length)];
-            while (w1 === w2) {
-                w2 = wordList[Math.floor(Math.random() * wordList.length)];
-            }
-            
-            room.amwData.p1Word = w1;
-            room.amwData.p2Word = w2;
-            room.amwData.noCount = 0;
-
+            // CRITICAL FIX: Only roll words on Round 1. Keep them for Round 2!
             if (room.currentRound === 1) {
+                let w1 = wordList[Math.floor(Math.random() * wordList.length)];
+                let w2 = wordList[Math.floor(Math.random() * wordList.length)];
+                while (w1 === w2) {
+                    w2 = wordList[Math.floor(Math.random() * wordList.length)];
+                }
+                
+                room.amwData.p1Word = w1;
+                room.amwData.p2Word = w2;
+                room.amwData.noCount = 0;
                 room.amwData.guesserId = room.players[0].id;
                 room.amwData.answererId = room.players[1].id;
             } else {
+                // Round 2 uses the exact same words generated in Round 1
+                room.amwData.noCount = 0;
                 room.amwData.guesserId = room.players[1].id;
                 room.amwData.answererId = room.players[0].id;
             }
@@ -275,12 +278,11 @@ io.on('connection', (socket) => {
         io.to(roomCode).emit('allHintsSubmitted', { players: room.players });
     });
 
-    // --- UPDATED: ONLY HOST CAN CAST THE FINAL VOTE ---
+    // --- ONLY HOST CAN CAST THE FINAL VOTE ---
     socket.on('castVote', ({ roomCode, votedPlayerId }) => {
         const room = rooms[roomCode];
         if (!room || room.gameMode === "amw") return;
 
-        // Verify the event was genuinely triggered by the host player
         if (socket.id !== room.hostId) {
             return socket.emit('errorMsg', 'Only the host has the authority to cast the final vote!');
         }
@@ -352,7 +354,6 @@ io.on('connection', (socket) => {
                 } else {
                     if (room.hostId === socket.id) room.hostId = room.players[0].id;
                     
-                    // Auto-adjust active turn position if active player disconnected
                     if (room.gameStarted && room.currentTurnIndex >= room.players.length) {
                         room.currentTurnIndex = 0;
                     }
