@@ -3,272 +3,506 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ain't Gonna Lie - Game Lobby</title>
+    <title>Ain't Gonna Lie - Premium Game Suite</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --panel-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: #334155;
-            --green-accent: #10b981;
-            --green-hover: #059669;
-            --blue-accent: #0095f6;
-            --blue-hover: #0077c8;
-            /* Dynamic active color configuration controlled by script */
-            --current-accent: var(--green-accent);
-            --current-hover: var(--green-hover);
+            --bg-color: #000000;
+            --card-bg: #121212;
+            --text-main: #f5f5f5;
+            --text-muted: #a8a8a8;
+            --border-color: #262626;
+            --insta-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            --btn-success: #0095f6;
+            --btn-danger: #ed4956;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .game-container { width: 100%; max-width: 500px; background: var(--card-bg); border-radius: 12px; padding: 30px; border: 1px solid var(--border-color); position: relative; }
+        .screen { display: none; flex-direction: column; gap: 20px; }
+        .screen.active { display: flex; }
+        
+        h1.logo { font-size: 2.3rem; font-weight: 700; text-align: center; background: var(--insta-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px; }
+        h2 { font-size: 1.35rem; font-weight: 600; text-align: center; letter-spacing: -0.5px; }
+        .subtitle { text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+        .p-badge { font-size: 0.7rem; background: #262626; color: var(--text-muted); padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: 6px; }
+        
+        .mode-selection-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 5px; }
+        .mode-card { border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; transition: background 0.2s ease, border-color 0.2s ease; background: #1c1c1e; }
+        .mode-card.selected { border-color: #e6683c; background: #261712; }
+        .mode-card h3 { font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main); }
+        .mode-card p { font-size: 0.75rem; color: var(--text-muted); }
 
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
+        .input-group { display: flex; flex-direction: column; gap: 10px; }
+        input, select { width: 100%; padding: 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; outline: none; background-color: #1c1c1e; color: var(--text-main); transition: border-color 0.2s ease; }
+        input:focus, select:focus { border-color: #555555; }
+        
+        button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; min-height: 48px; transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease; user-select: none; }
+        button:active { transform: scale(0.94); }
+        button:disabled { opacity: 0.2; cursor: not-allowed; transform: none !important; }
+        
+        .btn-gradient { background: var(--insta-gradient); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
+        .btn-outline:hover { background: #1c1c1e; }
 
-        .lobby-container {
-            background: var(--panel-bg);
-            width: 100%;
-            max-width: 800px;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            border: 1px solid var(--border);
-        }
+        .room-code-display { font-size: 1.8rem; font-weight: 700; letter-spacing: 4px; text-align: center; padding: 14px; background: #1c1c1e; border: 1px dashed var(--text-muted); border-radius: 8px; color: var(--text-main); cursor: pointer; }
+        .player-list, .voting-grid, .hint-board { display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; }
+        .player-chip { padding: 12px 16px; background: #1c1c1e; border: 1px solid var(--border-color); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+        
+        .secret-box { background: #1c1c1e; border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; text-align: center; }
+        .live-score-bar { background: #1c1c1e; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-align: center; border: 1px solid var(--border-color); }
+        .turn-banner { padding: 12px; border-radius: 8px; text-align: center; font-weight: 600; font-size: 0.9rem; background: #1c1c1e; color: #ffddb3; border: 1px solid #443322; }
 
-        h1 {
-            text-align: center;
-            margin-bottom: 8px;
-            font-size: 2rem;
-            letter-spacing: -0.5px;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: var(--text-muted);
-            margin-bottom: 24px;
-            font-size: 0.95rem;
-        }
-
-        .game-modes {
-            display: flex;
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        .mode-btn {
-            flex: 1;
-            background: transparent;
-            border: 2px solid var(--border);
-            color: var(--text-muted);
-            padding: 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.2s;
-        }
-
-        /* Specific colors assigned to individual mode buttons */
-        .mode-btn.standard-btn.active {
-            border-color: var(--green-accent);
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--text-main);
-        }
-
-        .mode-btn.duel-btn.active {
-            border-color: var(--blue-accent);
-            background: rgba(0, 149, 246, 0.1);
-            color: var(--text-main);
-        }
-
-        .search-box {
-            width: 100%;
-            padding: 12px 16px;
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-main);
-            font-size: 0.95rem;
-            margin-bottom: 16px;
-            outline: none;
-        }
-
-        .search-box:focus {
-            border-color: var(--current-accent);
-        }
-
-        .category-scroll-area {
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            max-height: 320px;
-            overflow-y: auto;
-            padding: 16px;
-            margin-bottom: 24px;
-        }
-
-        .category-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 12px;
-        }
-
-        .category-btn {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            transition: all 0.15s;
-        }
-
-        .category-btn:hover {
-            border-color: var(--text-muted);
-            transform: translateY(-1px);
-        }
-
-        .category-btn.selected {
-            background: var(--current-accent);
-            border-color: var(--current-accent);
-            color: white;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .action-btn {
-            width: 100%;
-            background: var(--current-accent);
-            color: white;
-            border: none;
-            padding: 16px;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .action-btn:hover {
-            background: var(--current-hover);
-        }
-
-        .category-scroll-area::-webkit-scrollbar {
-            width: 8px;
-        }
-        .category-scroll-area::-webkit-scrollbar-track {
-            background: var(--bg-dark);
-        }
-        .category-scroll-area::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 4px;
-        }
+        /* Custom 10-No Toggles Dashboard */
+        .amw-no-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px 0; }
+        .no-box { background: #1c1c1e; border: 2px solid var(--border-color); border-radius: 8px; padding: 12px 0; font-weight: 700; font-size: 1rem; text-align: center; cursor: pointer; transition: all 0.15s ease; user-select: none; color: var(--text-muted); }
+        .no-box:active { transform: scale(0.9); }
+        .no-box.checked { background: var(--btn-danger); border-color: var(--btn-danger); color: white; box-shadow: 0 0 10px rgba(237, 73, 86, 0.4); }
+        .hint-card { padding: 14px; background: #121212; border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
     </style>
 </head>
 <body>
 
-<div class="lobby-container">
-    <h1>Ain't Gonna Lie</h1>
-    <div class="subtitle">Select your mode and category to start the duel</div>
+<div class="game-container">
 
-    <div class="game-modes">
-        <button class="mode-btn standard-btn active" onclick="setMode('aous', this)">Ain't Gonna Lie (Standard)</button>
-        <button class="mode-btn duel-btn" onclick="setMode('amw', this)">Ain't My Word (Duel)</button>
+    <div id="screen-main" class="screen active">
+        <h1 class="logo">Ain't Gonna Lie</h1>
+        <p class="subtitle">Enter name and select a game suite experience.</p>
+        
+        <div class="input-group">
+            <input type="text" id="player-name" placeholder="Your Display Name" maxlength="15">
+        </div>
+
+        <div class="input-group">
+            <label class="subtitle" style="text-align:left; font-weight:600;">Select Game Mode</label>
+            <div class="mode-selection-container">
+                <div id="mode-card-aous" class="mode-card selected" onclick="selectSuiteMode('aous')">
+                    <h3>Ain't One of Us</h3>
+                    <p>3-10 Players Imposter Game</p>
+                </div>
+                <div id="mode-card-amw" class="mode-card" onclick="selectSuiteMode('amw')">
+                    <h3>Ain't My Word</h3>
+                    <p>2 Players Question Duel</p>
+                </div>
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color)">
+        
+        <div class="input-group">
+            <label class="subtitle" style="text-align:left; font-weight:600;">Match Settings</label>
+            <select id="setup-rounds">
+                <option value="3">3 Rounds</option>
+                <option value="5" selected>5 Rounds</option>
+                <option value="10">10 Rounds</option>
+            </select>
+            <select id="setup-category">
+                <option value="all" selected>All Categories (Rotation)</option>
+                <option value="random">🎲 Random Mode (Locks 1 Cat)</option>
+                <option value="Video Games">Video Games 🎮</option>
+                <option value="Anime">Anime 🥷</option>
+                <option value="Cartoon">Cartoon 🦸</option>
+                <option value="Animals">Animals</option>
+                <option value="Food">Food</option>
+            </select>
+            <button class="btn-gradient" onclick="createRoom()">Create New Room</button>
+        </div>
+        
+        <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">— OR —</div>
+        
+        <div class="input-group">
+            <input type="text" id="join-code" placeholder="Enter 4-Letter Code" maxlength="4" style="text-transform: uppercase; text-align: center;">
+            <button class="btn-gradient" onclick="joinRoom()">JOIN with code</button>
+        </div>
     </div>
 
-    <input type="text" id="searchBar" class="search-box" placeholder="Search categories..." oninput="filterCategories()">
-
-    <div class="category-scroll-area">
-        <div id="categoryGrid" class="category-grid"></div>
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-mode-title">Lobby Room</h2>
+        <div class="room-code-display" id="lobby-code" onclick="copyInviteLink()">----</div>
+        <div id="lobby-player-list" class="player-list"></div>
+        <button id="start-game-btn" class="btn-gradient" style="display:none;" onclick="hostStartGame()">Start Game</button>
+        <p id="waiting-msg" class="subtitle" style="display:block;">Waiting for host to start...</p>
     </div>
 
-    <button class="action-btn" onclick="startGame()">Launch Game</button>
+    <div id="screen-reveal" class="screen">
+        <div class="live-score-bar" id="reveal-round-tracker">Round 1</div>
+        <h2>Secret Identification</h2>
+        <div class="secret-box">
+            <div id="reveal-category" style="font-size:1.5rem; font-weight:700; margin-bottom:15px;">---</div>
+            <div id="reveal-secret-content" style="font-size:2rem; font-weight:800;">---</div>
+        </div>
+        <div id="current-turn-banner" class="turn-banner">Waiting...</div>
+        <div>
+            <p class="subtitle" style="text-align:left; margin-bottom:5px; font-weight:600;">Live Feed Clues:</p>
+            <div id="live-stream-hints" class="hint-board"></div>
+        </div>
+        <div class="input-group" id="hint-submission-zone">
+            <input type="text" id="player-hint-input" placeholder="Type your clue..." maxlength="25">
+            <button class="btn-gradient" id="submit-hint-btn" onclick="submitMyHint()">Submit Clue</button>
+        </div>
+        <div id="hint-waiting-zone" style="display:none; text-align:center; flex-direction: column; gap: 12px;">
+            <p class="subtitle">All clues gathered! Awaiting Host...</p>
+            <button id="host-reveal-btn" class="btn-gradient" style="display:none;" onclick="hostRevealAllHints()">Go To Accusation Phase ➔</button>
+        </div>
+    </div>
+
+    <div id="screen-voting" class="screen">
+        <h2>Analyze The Hints</h2>
+        <div class="hint-board" id="revealed-hints-board"></div>
+        <div id="voting-scoreboard" class="live-score-bar"></div>
+        <div id="voting-options" class="voting-grid"></div>
+    </div>
+
+    <div id="screen-amw-game" class="screen">
+        <div class="live-score-bar" id="amw-round-tracker">Round 1 of 2</div>
+        <h2>Ain't My Word Duel</h2>
+        
+        <div class="secret-box">
+            <div id="amw-category-display" style="font-size:1.2rem; font-weight:700; color:#e6683c;">Category: ---</div>
+            <div id="amw-role-instruction" style="font-size:1rem; margin-top:8px; color:var(--text-muted);">Your Secret Word:</div>
+            <div id="amw-secret-word" style="font-size:2.2rem; font-weight:800; margin-top:5px; color:var(--text-main);">---</div>
+        </div>
+
+        <div id="amw-role-banner" class="turn-banner">---</div>
+
+        <div id="amw-guesser-zone" style="display:none;" class="input-group">
+            <p class="subtitle" style="text-align:left;">Ask questions out loud. Type your official guess below when ready:</p>
+            <input type="text" id="amw-guess-input" placeholder="Is the word...">
+            <button class="btn-gradient" onclick="submitAmwGuess()">Submit Official Guess</button>
+        </div>
+
+        <div id="amw-answerer-zone" style="display:none;">
+            <p class="subtitle">Listen to their questions. If their question evaluates to a <strong>"NO"</strong>, toggle the boxes sequentially:</p>
+            <div class="amw-no-grid">
+                <div class="no-box" id="nobox-1" onclick="toggleNoBox(1)">1</div>
+                <div class="no-box" id="nobox-2" onclick="toggleNoBox(2)">2</div>
+                <div class="no-box" id="nobox-3" onclick="toggleNoBox(3)">3</div>
+                <div class="no-box" id="nobox-4" onclick="toggleNoBox(4)">4</div>
+                <div class="no-box" id="nobox-5" onclick="toggleNoBox(5)">5</div>
+                <div class="no-box" id="nobox-6" onclick="toggleNoBox(6)">6</div>
+                <div class="no-box" id="nobox-7" onclick="toggleNoBox(7)">7</div>
+                <div class="no-box" id="nobox-8" onclick="toggleNoBox(8)">8</div>
+                <div class="no-box" id="nobox-9" onclick="toggleNoBox(9)">9</div>
+                <div class="no-box" id="nobox-10" onclick="toggleNoBox(10)">10</div>
+            </div>
+            <p class="subtitle" style="font-size:0.8rem; font-style:italic;">You can tap an active box to undo a mistake.</p>
+        </div>
+
+        <div class="live-score-bar" id="amw-live-status-bar">No Ticks Accumulated: 0 / 10</div>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <h2>Round Settled</h2>
+        <div class="secret-box" id="result-box"></div>
+        <button id="host-next-btn" class="btn-gradient" style="display:none;" onclick="hostNextRound()">Next Round</button>
+        <p id="client-next-msg" class="subtitle">Waiting for host to advance...</p>
+    </div>
+
+    <div id="screen-gameover" class="screen">
+        <h1 class="logo">Final Standings</h1>
+        <div id="final-scoreboard" class="player-list"></div>
+        <button id="host-restart-btn" class="btn-gradient" style="display:none;" onclick="hostRestartGame()">Play Again</button>
+    </div>
+
+    <button id="host-emergency-reset-btn" class="btn-outline" style="display:none; margin-top:15px; border-color:var(--btn-danger); color:var(--btn-danger); padding:10px;" onclick="hostRestartGame()">
+        🚨 Force Reset Game to Lobby
+    </button>
+
 </div>
 
 <script>
-    let currentMode = 'aous';
-    let selectedCategory = '';
+    const socket = io();
+    let myRoomCode = "";
+    let amIHost = false;
+    let selectedGameMode = "aous"; 
 
-    // Exactly 23 clean categories imported directly from your database
-    const categories = [
-        "Animals", "Electronics", "Countries", "Food", "Sports", "Fruits", 
-        "Vegetables", "Clothing", "School Subjects", "Jobs", "Colors", "Vehicles", 
-        "Furniture", "Musical Instruments", "Hobbies", "Weather", "Family Members", 
-        "Rooms in a House", "Shapes and Space", "Toys and Games", "Video Games", 
-        "Anime", "Cartoon"
-    ];
-
-    function displayCategories() {
-        const grid = document.getElementById('categoryGrid');
-        grid.innerHTML = '';
+    function selectSuiteMode(mode) {
+        selectedGameMode = mode;
+        document.getElementById('mode-card-aous').classList.remove('selected');
+        document.getElementById('mode-card-amw').classList.remove('selected');
+        document.getElementById(`mode-card-${mode}`).classList.add('selected');
         
-        categories.forEach(cat => {
-            const btn = document.createElement('button');
-            btn.className = `category-btn ${selectedCategory === cat ? 'selected' : ''}`;
-            btn.textContent = cat;
-            btn.onclick = () => selectCategory(cat);
-            grid.appendChild(btn);
-        });
+        // Hide/Show round config logic since AMW manages its internal round loops
+        document.getElementById('setup-rounds').style.display = mode === "amw" ? "none" : "block";
     }
 
-    function selectCategory(cat) {
-        selectedCategory = cat;
-        displayCategories();
+    function navigateTo(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        
+        const emergencyBtn = document.getElementById('host-emergency-reset-btn');
+        const activeGameplayScreens = ['screen-reveal', 'screen-voting', 'screen-amw-game', 'screen-result'];
+        emergencyBtn.style.display = (amIHost && activeGameplayScreens.includes(screenId)) ? 'block' : 'none';
     }
 
-    function setMode(mode, element) {
-        currentMode = mode;
-        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-        element.classList.add('active');
+    function getName() { return document.getElementById('player-name').value.trim() || "Anonymous"; }
+    
+    function createRoom() { 
+        socket.emit('createRoom', { 
+            rounds: document.getElementById('setup-rounds').value,
+            categoryMode: document.getElementById('setup-category').value,
+            gameMode: selectedGameMode
+        }); 
+    }
+    
+    function joinRoom() {
+        const code = document.getElementById('join-code').value.toUpperCase().trim();
+        if(code.length !== 4) return alert("Enter a 4-letter room code!");
+        myRoomCode = code;
+        socket.emit('joinRoom', { roomCode: code, playerName: getName() });
+    }
 
-        // Dynamically shift visual colors between Green and Blue accents
-        const root = document.documentElement;
-        if (mode === 'aous') {
-            root.style.setProperty('--current-accent', 'var(--green-accent)');
-            root.style.setProperty('--current-hover', 'var(--green-hover)');
+    function copyInviteLink() {
+        navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?room=${myRoomCode}`);
+        alert("Invite link copied!");
+    }
+
+    function hostStartGame() { socket.emit('startGame', { roomCode: myRoomCode }); }
+    function hostNextRound() { socket.emit('nextRound', { roomCode: myRoomCode }); }
+    function hostRestartGame() { socket.emit('restartGame', { roomCode: myRoomCode }); }
+    
+    // --- AOUS CORE LOGIC FUNCTIONS ---
+    function submitMyHint() {
+        const txt = document.getElementById('player-hint-input').value.trim();
+        if(!txt) return alert("Please type something before submitting!");
+        socket.emit('submitHint', { roomCode: myRoomCode, hintText: txt });
+        document.getElementById('player-hint-input').value = "";
+    }
+    function hostRevealAllHints() { socket.emit('revealHints', { roomCode: myRoomCode }); }
+    function castVote(targetId) { socket.emit('castVote', { roomCode: myRoomCode, votedPlayerId: targetId }); }
+
+    // --- AMW CORE LOGIC FUNCTIONS ---
+    let localNoArray = Array(11).fill(false);
+    
+    function toggleNoBox(num) {
+        // Only the designated Answerer can toggle checkboxes
+        if (document.getElementById('nobox-' + num).style.pointerEvents === 'none') return;
+        
+        localNoArray[num] = !localNoArray[num];
+        document.getElementById(`nobox-${num}`).classList.toggle('checked', localNoArray[num]);
+        
+        // Calculate verified continuous true elements
+        let checkedCount = 0;
+        for(let i=1; i<=10; i++) {
+            if (localNoArray[i]) checkedCount++;
+        }
+        
+        socket.emit('amwUpdateNoCount', { roomCode: myRoomCode, count: checkedCount });
+    }
+
+    function submitAmwGuess() {
+        const guess = document.getElementById('amw-guess-input').value.trim();
+        if(!guess) return alert("Type your guess statement first!");
+        socket.emit('amwSubmitGuess', { roomCode: myRoomCode, guessText: guess });
+        document.getElementById('amw-guess-input').value = "";
+    }
+
+    // --- SOCKET MAP ENGINE BINDINGS ---
+    socket.on('roomCreated', (code) => {
+        myRoomCode = code;
+        amIHost = true;
+        socket.emit('joinRoom', { roomCode: code, playerName: getName() });
+    });
+
+    socket.on('roomUpdated', ({ roomCode, players, hostId, gameStarted, gameMode }) => {
+        myRoomCode = roomCode;
+        amIHost = (socket.id === hostId);
+        selectedGameMode = gameMode;
+        
+        document.getElementById('lobby-mode-title').innerText = gameMode === "amw" ? "Lobby: Ain't My Word (2P Duel)" : "Lobby: Ain't One of Us";
+        document.getElementById('lobby-code').innerText = roomCode;
+        document.getElementById('start-game-btn').style.display = amIHost ? 'block' : 'none';
+        document.getElementById('waiting-msg').style.display = amIHost ? 'none' : 'block';
+
+        const list = document.getElementById('lobby-player-list');
+        list.innerHTML = players.map(p => `
+            <div class="player-chip">
+                <span>${p.name} <span class="p-badge">P${p.pNumber}</span> ${p.id === hostId ? '👑' : ''}</span>
+                <span style="color:var(--btn-success)">Ready</span>
+            </div>
+        `).join('');
+
+        navigateTo('screen-lobby');
+    });
+
+    socket.on('gameRestartedByHost', ({ roomCode, players, hostId, gameStarted, gameMode }) => {
+        document.getElementById('player-hint-input').value = "";
+        document.getElementById('amw-guess-input').value = "";
+        
+        myRoomCode = roomCode;
+        amIHost = (socket.id === hostId);
+        selectedGameMode = gameMode;
+        
+        document.getElementById('lobby-code').innerText = roomCode;
+        document.getElementById('start-game-btn').style.display = amIHost ? 'block' : 'none';
+        document.getElementById('waiting-msg').style.display = amIHost ? 'none' : 'block';
+
+        const list = document.getElementById('lobby-player-list');
+        list.innerHTML = players.map(p => `
+            <div class="player-chip">
+                <span>${p.name} <span class="p-badge">P${p.pNumber}</span> ${p.id === hostId ? '👑' : ''}</span>
+                <span style="color:var(--btn-success)">Ready</span>
+            </div>
+        `).join('');
+
+        navigateTo('screen-lobby');
+    });
+
+    // --- LISTENERS: AIN'T MY WORD TRACK ---
+    socket.on('amwRoundStarted', ({ category, currentRound, maxRounds, players, amwData }) => {
+        navigateTo('screen-amw-game');
+        
+        document.getElementById('amw-round-tracker').innerText = `Round ${currentRound} of ${maxRounds}`;
+        document.getElementById('amw-category-display').innerText = `Category: ${category}`;
+        
+        // Reset check layouts clean
+        localNoArray.fill(false);
+        for(let i=1; i<=10; i++) {
+            document.getElementById(`nobox-${i}`).classList.remove('checked');
+        }
+
+        const isGuesser = (socket.id === amwData.guesserId);
+        const mySecretWord = (socket.id === players[0].id) ? amwData.p1Word : amwData.p2Word;
+        
+        document.getElementById('amw-secret-word').innerText = mySecretWord;
+        
+        const banner = document.getElementById('amw-role-banner');
+        const gZone = document.getElementById('amw-guesser-zone');
+        const aZone = document.getElementById('amw-answerer-zone');
+
+        if (isGuesser) {
+            banner.innerText = "🟢 YOU ARE THE GUESSER - Ask Questions!";
+            banner.style.background = "#1c2612";
+            banner.style.borderColor = "#22543d";
+            banner.style.color = "#9ae6b4";
+            gZone.style.display = "flex";
+            aZone.style.display = "none";
         } else {
-            root.style.setProperty('--current-accent', 'var(--blue-accent)');
-            root.style.setProperty('--current-hover', 'var(--blue-hover)');
+            banner.innerText = "⚡ YOU ARE THE ANSWERER - Track the NOs";
+            banner.style.background = "#261214";
+            banner.style.borderColor = "#542225";
+            banner.style.color = "#fbb6ce";
+            gZone.style.display = "none";
+            aZone.style.display = "block";
         }
-    }
 
-    function filterCategories() {
-        const query = document.getElementById('searchBar').value.toLowerCase();
-        const buttons = document.querySelectorAll('.category-btn');
+        // Set safety block pointers
+        for(let i=1; i<=10; i++) {
+            document.getElementById('nobox-'+i).style.pointerEvents = isGuesser ? 'none' : 'auto';
+        }
+
+        document.getElementById('amw-live-status-bar').innerText = "No Ticks Accumulated: 0 / 10";
+    });
+
+    socket.on('amwNoCountUpdated', ({ noCount }) => {
+        document.getElementById('amw-live-status-bar').innerText = `No Ticks Accumulated: ${noCount} / 10`;
         
-        buttons.forEach(btn => {
-            const text = btn.textContent.toLowerCase();
-            btn.style.display = text.includes(query) ? 'block' : 'none';
-        });
-    }
-
-    function startGame() {
-        if (!selectedCategory) {
-            alert('Please select a category first!');
-            return;
+        // Sync checkmarks visually on Guesser UI
+        if(document.getElementById('amw-guesser-zone').style.display === "flex") {
+            for(let i=1; i<=10; i++) {
+                document.getElementById(`nobox-${i}`).classList.toggle('checked', i <= noCount);
+            }
         }
-        // Proceed with your standard socket logic passing (currentMode, selectedCategory)
-        alert(`Setting room configuration to Mode: ${currentMode} | Category: ${selectedCategory}`);
-    }
+    });
 
-    displayCategories();
+    // --- LISTENERS: CLASSIC TRACK ---
+    socket.on('roundStarted', ({ category, word, isImposter, currentRound, maxRounds, players, activeTurnPlayerId, activeTurnPlayerName }) => {
+        document.getElementById('reveal-round-tracker').innerText = `Round ${currentRound} of ${maxRounds}`;
+        document.getElementById('reveal-category').innerText = category;
+        
+        navigateTo('screen-reveal');
+
+        const content = document.getElementById('reveal-secret-content');
+        if(isImposter) {
+            content.style.color = "var(--btn-danger)";
+            content.innerText = "⚠️ YOU ARE THE IMPOSTER";
+        } else {
+            content.style.color = "#0095f6";
+            content.innerText = word;
+        }
+
+        const stream = document.getElementById('live-stream-hints');
+        const submittedPlayers = players.filter(p => p.hint !== "");
+        if (submittedPlayers.length === 0) {
+            stream.innerHTML = `<p class="subtitle" style="text-align:center; font-style:italic;">No clues posted yet...</p>`;
+        } else {
+            stream.innerHTML = submittedPlayers.map(p => `
+                <div style="background:#1c1c1e; color:var(--text-main); border:1px solid var(--border-color); padding:10px 14px; border-radius:8px; font-size:0.9rem; display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="color:var(--text-main);">${p.name} <span class="p-badge">P${p.pNumber}</span></strong>
+                    <span style="color:var(--text-muted); font-weight:500;">"${p.hint}"</span>
+                </div>
+            `).join('');
+        }
+
+        const banner = document.getElementById('current-turn-banner');
+        if (socket.id === activeTurnPlayerId) {
+            banner.innerText = "🟢 IT'S YOUR TURN! Submit your clue.";
+            document.getElementById('player-hint-input').disabled = false;
+            document.getElementById('submit-hint-btn').disabled = false;
+        } else {
+            banner.innerText = `⏳ Waiting for ${activeTurnPlayerName}...`;
+            document.getElementById('player-hint-input').disabled = true;
+            document.getElementById('submit-hint-btn').disabled = true;
+        }
+    });
+
+    socket.on('hintSubmissionProgress', ({ allDone }) => {
+        if (allDone) {
+            document.getElementById('hint-submission-zone').style.display = 'none';
+            document.getElementById('hint-waiting-zone').style.display = 'flex';
+            document.getElementById('current-turn-banner').innerText = "✅ Everyone has submitted!";
+            document.getElementById('host-reveal-btn').style.display = amIHost ? 'block' : 'none';
+        }
+    });
+
+    socket.on('allHintsSubmitted', ({ players }) => {
+        const board = document.getElementById('revealed-hints-board');
+        board.innerHTML = players.map(p => `
+            <div class="hint-card">
+                <div class="p-name">${p.name} <span class="p-badge">P${p.pNumber}</span></div>
+                <div class="p-text">"${p.hint}"</div>
+            </div>
+        `).join('');
+
+        document.getElementById('voting-scoreboard').innerHTML = "Live Status Scores: " + players.map(p => `${p.name}: ${p.points}`).join(' | ');
+
+        const optionsGrid = document.getElementById('voting-options');
+        optionsGrid.innerHTML = players.map(p => `
+            <button class="btn-outline" style="${!amIHost ? 'opacity: 0.6; cursor: not-allowed;' : ''}" onclick="castVote('${p.id}')">
+                Accuse Target: ${p.name}
+            </button>
+        `).join('');
+
+        navigateTo('screen-voting');
+    });
+
+    socket.on('roundResult', ({ pointsSummaryHtml, players, isGameOver }) => {
+        document.getElementById('result-box').innerHTML = pointsSummaryHtml;
+        
+        if (isGameOver) {
+            document.getElementById('host-next-btn').style.display = 'none';
+            document.getElementById('client-next-msg').innerText = "Game over! Gathering total scores...";
+            setTimeout(() => {
+                const finalGrid = document.getElementById('final-scoreboard');
+                const sorted = [...players].sort((a,b) => b.points - a.points);
+                finalGrid.innerHTML = sorted.map((p, idx) => `
+                    <div class="player-chip">
+                        <span><strong>${idx===0?'🥇':'👤'} ${p.name} <span class="p-badge">P${p.pNumber}</span></strong></span>
+                        <strong>${p.points} Pts</strong>
+                    </div>
+                `).join('');
+                document.getElementById('host-restart-btn').style.display = amIHost ? 'block' : 'none';
+                navigateTo('screen-gameover');
+            }, 4000);
+        } else {
+            document.getElementById('host-next-btn').style.display = amIHost ? 'block' : 'none';
+            document.getElementById('client-next-msg').style.display = amIHost ? 'none' : 'block';
+        }
+        navigateTo('screen-result');
+    });
+
+    socket.on('errorMsg', (msg) => alert(msg));
 </script>
-
 </body>
 </html>
