@@ -8,7 +8,6 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(__dirname));
 
-// The full 23-category database completely updated
 const gameDatabase = {
     "Animals": ["Lion", "Tiger", "Elephant", "Giraffe", "Kangaroo", "Dog", "Cat", "Rabbit", "Bear", "Wolf", "Deer", "Fox", "Zebra", "Monkey", "Hippo", "Rhino", "Cheetah", "Leopard", "Panda", "Koala", "Horse", "Cow", "Pig", "Sheep", "Goat", "Donkey", "Camel", "Squirrel", "Mouse", "Rat", "Bat", "Frog", "Toad", "Turtle", "Snake", "Lizard", "Crocodile", "Alligator", "Dolphin", "Whale", "Shark", "Seal", "Octopus", "Crab", "Lobster", "Eagle", "Hawk", "Owl", "Parrot", "Penguin"],
     "Electronics": ["Smartphone", "Laptop", "Television", "Tablet", "Computer", "Smartwatch", "Headphones", "Earbuds", "Speaker", "Camera", "Drone", "Projector", "Printer", "Scanner", "Router", "Modem", "Monitor", "Keyboard", "Mouse", "Microphone", "Webcam", "Charger", "Battery", "Flashlight", "Calculated", "Console", "Controller", "Thermostat", "Refrigerator", "Microwave", "Toaster", "Blender", "Oven", "Dishwasher", "Vacuum", "Fan", "Heater", "Airconditioner", "Lamp", "Clock", "Radio", "Player", "Recorder", "Adapter", "Cable", "Plug", "Switch", "Sensor", "Remote", "Scale"],
@@ -32,7 +31,7 @@ const gameDatabase = {
     "Toys and Games": ["Doll", "ActionFigure", "Lego", "Blocks", "Puzzle", "Car", "Train", "Plane", "Ball", "Bat", "TeddyBear", "Plushie", "Robot", "Slime", "PlayDough", "Crayons", "Markers", "Paint", "YoYo", "Kite", "Frisbee", "Marble", "Dice", "Cards", "Chess", "Checkers", "Monopoly", "Scrabble", "Dominoes", "VideoGame", "Console", "Controller", "Headset", "Bicycle", "Scooter", "Skateboard", "Trampoline", "Swing", "Slide", "Sandbox", "WaterGun", "NerfGun", "RubiksCube", "Spinner", "Bubble", "Balloon", "Top", "CardGame", "BoardGame", "ToySoldier"],
     "Video Games": ["Minecraft", "GTA", "Fortnite", "Valorant", "FIFA", "Pokemon", "PacMan", "Tetris", "CallOfDuty", "AssassinCreed", "Cyberpunk", "Witcher", "EldenRing", "Skyrim", "Spiderman", "Halo", "Uncharted", "GodOfWar", "Overwatch", "Roblox", "ApexLegends", "AmongUs", "Zelda", "MarioKart", "Sonic", "Doom", "ResidentEvil", "MortalKombat", "StreetFighter", "Tekken", "Fallout", "DarkSouls", "RedDead", "FinalFantasy", "ClashRoyale", "SubwaySurfers", "AngryBirds", "CandyCrush", "PUBG", "FreeFire", "BrawlStars", "Terraria", "Destiny", "Borderlands", "BioShock", "TombRaider", "JustDance", "Sims", "AnimalCrossing", "StardewValley"],
     "Anime": ["Naruto", "OnePiece", "DragonBall", "Bleach", "DeathNote", "AttackOnTitan", "DemonSlayer", "JujutsuKaisen", "MyHeroAcademia", "HunterXHunter", "FullmetalAlchemist", "SteinsGate", "TokyoGhoul", "OnePunchMan", "BlackClover", "SwordArtOnline", "ChainsawMan", "CyberpunkEdgerunners", "Monster", "CodeGeass", "CowboyBebop", "NeonGenesisEvangelion", "MobPsycho", "Haikyuu", "KurokoNoBasket", "BlueLock", "SlamDunk", "YourName", "SpiritedAway", "VinlandSaga", "FireForce", "SoulEater", "FairyTail", "Boruto", "SpyXFamily", "KaijuNo8", "SoloLeveling", "DrStone", "TokyoRevengers", "JoJo", "Gintama", "Parasyte", "PsychoPass", "Erased", "YourLieInApril", "Dororo", "BlueExorcist", "Hellsing", "Overlord", "ReZero"],
-    "Cartoon": ["Ben10", "RickAndMorty", "TomAndJerry", "ScoobyDoo", "LooneyTunes", "SpongeBob", "Simpsons", "FamilyGuy", "SouthPark", "BoJackHorseman", "Avatar", "PhineasAndFerb", "GravityFalls", "RegularShow", "AdventureTime", "AmazingWorldOfGumball", "TeenTitans", "Batman", "SpiderMan", "JusticeLeague", "PowerpuffGirls", "DexterLaboratory", "JohnnyBravo", "CourageTheCowardlyDog", "FairlyOddParents", "StarWarsCloneWars", "XMen", "Transformers", "Popeye", "TheFlintstones", "WeBareBears"]
+    "Cartoon": ["Ben10", "RickAndMorty", "TomAndJerry", "ScoobyDoo", "LooneyTunes", "SpongeBob", "Simpsons", "FamilyGuy", "SouthPark", "BoJackHorseman", "Avatar", "PhineasAndFerb", "GravityFalls", "RegularShow", "AdventureTime", "AmazingWorldOfGumball", "TeenTitans", "Batman", "SpiderMan", "JusticeLeague", "PowerpuffGirls", "DexterLaboratory", "JohnnyBravo", "CourageTheCowardlyDog", "EdEddnEddy", "DannyPhantom", "FairlyOddParents", "Futurama", "AmericanDad", "InvaderZim", "SamuraiJack", "StarWarsCloneWars", "XMen", "Transformers", "Popeye", "TheFlintstones", "WeBareBears", "StevenUniverse", "StarVsForcesOfEvil", "MiraculousLadybug", "KungFuPanda", "PenguinsOfMadagascar", "TotalDrama", "KickButtowski", "KimPossible", "CodenameKidsNextDoor", "FosterHome", "GrimAdventures", "GeneratorRex"]
 };
 
 const rooms = {};
@@ -53,7 +52,7 @@ io.on('connection', (socket) => {
         rooms[roomCode] = {
             code: roomCode,
             hostId: socket.id,
-            maxRounds: gameMode === "amw" ? 2 : (parseInt(rounds) || 5), 
+            maxRounds: gameMode === "amw" ? 2 : (parseInt(rounds) || 5), // AMW inherently runs 2 rounds so both guess once
             currentRound: 1,
             players: [],
             gameStarted: false,
@@ -64,7 +63,7 @@ io.on('connection', (socket) => {
             currentTurnIndex: 0,
             categoryMode: categoryMode, 
             lockedCategory: lockedCategory,
-            gameMode: gameMode || "aous", 
+            gameMode: gameMode || "aous", // "aous" = Ain't One of Us, "amw" = Ain't My Word
             amwData: {
                 noCount: 0,
                 p1Word: "",
@@ -125,33 +124,30 @@ io.on('connection', (socket) => {
     function startNewRound(roomCode) {
         const room = rooms[roomCode];
         if (!room) return;
-        
         const categories = Object.keys(gameDatabase);
         
-        // Retain category or roll if dynamic
         let chosenCategory = room.lockedCategory || categories[Math.floor(Math.random() * categories.length)];
         room.currentCategory = chosenCategory;
+
         const wordList = gameDatabase[chosenCategory];
 
         if (room.gameMode === "amw") {
-            // CRITICAL UPDATE: Only generate fresh words on Round 1. Keep them for Round 2.
-            if (room.currentRound === 1) {
-                let w1 = wordList[Math.floor(Math.random() * wordList.length)];
-                let w2 = wordList[Math.floor(Math.random() * wordList.length)];
-                while (w1 === w2) {
-                    w2 = wordList[Math.floor(Math.random() * wordList.length)];
-                }
-                room.amwData.p1Word = w1; 
-                room.amwData.p2Word = w2; 
+            // Setup Ain't My Word Mode Data structures
+            let w1 = wordList[Math.floor(Math.random() * wordList.length)];
+            let w2 = wordList[Math.floor(Math.random() * wordList.length)];
+            while (w1 === w2) {
+                w2 = wordList[Math.floor(Math.random() * wordList.length)];
             }
             
+            room.amwData.p1Word = w1; // Assigned secretly to P1
+            room.amwData.p2Word = w2; // Assigned secretly to P2
             room.amwData.noCount = 0;
 
             if (room.currentRound === 1) {
-                room.amwData.guesserId = room.players[0].id; 
+                room.amwData.guesserId = room.players[0].id; // P1 Guesses first
                 room.amwData.answererId = room.players[1].id;
             } else {
-                room.amwData.guesserId = room.players[1].id; 
+                room.amwData.guesserId = room.players[1].id; // P2 Guesses second
                 room.amwData.answererId = room.players[0].id;
             }
 
@@ -164,6 +160,7 @@ io.on('connection', (socket) => {
             });
 
         } else {
+            // Classic "Ain't One of Us" Mode Loop
             let chosenWord = wordList[Math.floor(Math.random() * wordList.length)];
             let attempts = 0;
             while (room.playedCombinations.includes(`${chosenCategory}:${chosenWord}`) && attempts < 50) {
@@ -204,14 +201,17 @@ io.on('connection', (socket) => {
         });
     }
 
+    // --- "AIN'T MY WORD" REAL-TIME EVENTS ---
     socket.on('amwUpdateNoCount', ({ roomCode, count }) => {
         const room = rooms[roomCode];
         if (!room || room.gameMode !== "amw") return;
         
         room.amwData.noCount = count;
+        
         io.to(roomCode).emit('amwNoCountUpdated', { noCount: room.amwData.noCount });
 
         if (room.amwData.noCount >= 10) {
+            // Answerer wins the round because 10 NOs checked out
             const answerer = room.players.find(p => p.id === room.amwData.answererId);
             const guesser = room.players.find(p => p.id === room.amwData.guesserId);
             answerer.points += 1;
@@ -220,7 +220,7 @@ io.on('connection', (socket) => {
 
             let html = `<h3 style="color:#ed4956; font-size:1.5rem; margin-bottom:10px;">Out of Answers!</h3>
             <p><strong>${answerer.name}</strong> won this round by defending their word successfully!</p>
-            <p style="margin-top:10px; color:#0095f6;">The word <strong>${guesser.name}</strong> failed to guess: <strong>${targetWord}</strong></p><br>`;
+            <p style="margin-top:10px; color:#0095f6;">The word <strong>${guesser.name}</strong> was failing to guess: <strong>${targetWord}</strong></p><br>`;
 
             io.to(roomCode).emit('roundResult', {
                 pointsSummaryHtml: html,
@@ -235,6 +235,9 @@ io.on('connection', (socket) => {
         if (!room || room.gameMode !== "amw") return;
 
         const guesser = room.players.find(p => p.id === room.amwData.guesserId);
+        const answerer = room.players.find(p => p.id === room.amwData.answererId);
+        
+        // Target word is what the answerer holds secretly
         let targetWord = room.amwData.guesserId === room.players[0].id ? room.amwData.p2Word : room.amwData.p1Word;
 
         if (guessText.trim().toLowerCase() === targetWord.toLowerCase()) {
@@ -253,6 +256,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- CLASSIC MODE EVENTS ---
     socket.on('submitHint', ({ roomCode, hintText }) => {
         const room = rooms[roomCode];
         if (!room) return;
