@@ -10,7 +10,7 @@ app.use(express.static(__dirname));
 
 const gameDatabase = {
     "Animals": ["Lion", "Tiger", "Elephant", "Giraffe", "Kangaroo", "Dog", "Cat", "Rabbit", "Bear", "Wolf", "Deer", "Fox", "Zebra", "Monkey", "Hippo", "Rhino", "Cheetah", "Leopard", "Panda", "Koala", "Horse", "Cow", "Pig", "Sheep", "Goat", "Donkey", "Camel", "Squirrel", "Mouse", "Rat", "Bat", "Frog", "Toad", "Turtle", "Snake", "Lizard", "Crocodile", "Alligator", "Dolphin", "Whale", "Shark", "Seal", "Octopus", "Crab", "Lobster", "Eagle", "Hawk", "Owl", "Parrot", "Penguin"],
-    "Electronics": ["Smartphone", "Laptop", "Television", "Tablet", "Computer", "Smartwatch", "Headphones", "Earbuds", "Speaker", "Camera", "Drone", "Projector", "Printer", "Scanner", "Router", "Modem", "Monitor", "Keyboard", "Mouse", "Microphone", "Webcam", "Charger", "Battery", "Flashlight", "Calculated", "Console", "Controller", "Thermostat", "Refrigerator", "Microwave", "Toaster", "Blender", "Oven", "Dishwasher", "Vacuum", "Fan", "Heater", "Airconditioner", "Lamp", "Clock", "Radio", "Player", "Recorder", "Adapter", "Cable", "Plug", "Switch", "Sensor", "Remote", "Scale"],
+    "Electronics": ["Smartphone", "Laptop", "Television", "Tablet", "Computer", "Smartwatch", "Headphones", "Earbuds", "Speaker", "Camera", "Drone", "Projector", "Printer", "Scanner", "Router", "Modem", "Monitor", "Keyboard", "Mouse", "Microphone", "Webcam", "Charger", "Battery", "Flashlight", "Calculator", "Console", "Controller", "Thermostat", "Refrigerator", "Microwave", "Toaster", "Blender", "Oven", "Dishwasher", "Vacuum", "Fan", "Heater", "Airconditioner", "Lamp", "Clock", "Radio", "Player", "Recorder", "Adapter", "Cable", "Plug", "Switch", "Sensor", "Remote", "Scale"],
     "Countries": ["Japan", "Canada", "Brazil", "Australia", "Germany", "USA", "Mexico", "France", "Italy", "Spain", "UK", "China", "India", "Egypt", "Russia", "Argentina", "Greece", "Turkey", "Sweden", "Norway", "Finland", "Denmark", "Holland", "Belgium", "Switzerland", "Austria", "NewZealand", "Thailand", "Vietnam", "Korea", "Singapore", "Malaysia", "Indonesia", "SaudiArabia", "Iceland", "Jamaica", "Cuba", "Portugal", "Ireland", "SouthAfrica", "Peru", "Chile", "Colombia", "Morocco", "Monaco", "Qatar", "Dubai", "Nepal", "Maldives", "Philippines"],
     "Food": ["Pizza", "Burger", "Sushi", "Pasta", "Taco", "Salad", "Soup", "Sandwich", "Steak", "Chicken", "Rice", "Noodles", "Bread", "Cheese", "Egg", "Butter", "Yogurt", "Milk", "Cereal", "Pancakes", "Waffles", "Bacon", "Sausage", "Hotdog", "Fries", "Chips", "Popcorn", "Cookie", "Cake", "Pie", "IceCream", "Donut", "Chocolate", "Candy", "Fruit", "Vegetable", "Fish", "Shrimp", "Curry", "Burrito", "Quesadilla", "Nuggets", "Muffin", "Bagel", "Toast", "Omelet", "Porridge", "Dumpling", "Meatballs", "Kebab"],
     "Sports": ["Soccer", "Basketball", "Baseball", "Football", "Tennis", "Volleyball", "Golf", "Cricket", "Rugby", "Hockey", "Badminton", "Swimming", "Running", "Cycling", "Boxing", "Karate", "Gymnastics", "Skating", "Skiing", "Snowboarding", "Surfing", "Sailing", "Rowing", "Wrestling", "Fencing", "Archery", "Bowling", "Billiards", "Darts", "Skateboarding", "Cheerleading", "Dancing", "Hiking", "Climbing", "Fishing", "Hunting", "Kayaking", "Diving", "Marathon", "Triathlon", "Softball", "Lacrosse", "Handball", "Squash", "Racquetball", "TableTennis", "Track", "Field", "Weightlifting", "Bodybuilding"],
@@ -52,7 +52,7 @@ io.on('connection', (socket) => {
         rooms[roomCode] = {
             code: roomCode,
             hostId: socket.id,
-            maxRounds: gameMode === "amw" ? 2 : (parseInt(rounds) || 5), // AMW inherently runs 2 rounds so both guess once
+            maxRounds: gameMode === "amw" ? 2 : (parseInt(rounds) || 5),
             currentRound: 1,
             players: [],
             gameStarted: false,
@@ -63,7 +63,7 @@ io.on('connection', (socket) => {
             currentTurnIndex: 0,
             categoryMode: categoryMode, 
             lockedCategory: lockedCategory,
-            gameMode: gameMode || "aous", // "aous" = Ain't One of Us, "amw" = Ain't My Word
+            gameMode: gameMode || "aous",
             amwData: {
                 noCount: 0,
                 p1Word: "",
@@ -132,22 +132,21 @@ io.on('connection', (socket) => {
         const wordList = gameDatabase[chosenCategory];
 
         if (room.gameMode === "amw") {
-            // Setup Ain't My Word Mode Data structures
             let w1 = wordList[Math.floor(Math.random() * wordList.length)];
             let w2 = wordList[Math.floor(Math.random() * wordList.length)];
             while (w1 === w2) {
                 w2 = wordList[Math.floor(Math.random() * wordList.length)];
             }
             
-            room.amwData.p1Word = w1; // Assigned secretly to P1
-            room.amwData.p2Word = w2; // Assigned secretly to P2
+            room.amwData.p1Word = w1;
+            room.amwData.p2Word = w2;
             room.amwData.noCount = 0;
 
             if (room.currentRound === 1) {
-                room.amwData.guesserId = room.players[0].id; // P1 Guesses first
+                room.amwData.guesserId = room.players[0].id;
                 room.amwData.answererId = room.players[1].id;
             } else {
-                room.amwData.guesserId = room.players[1].id; // P2 Guesses second
+                room.amwData.guesserId = room.players[1].id;
                 room.amwData.answererId = room.players[0].id;
             }
 
@@ -160,7 +159,6 @@ io.on('connection', (socket) => {
             });
 
         } else {
-            // Classic "Ain't One of Us" Mode Loop
             let chosenWord = wordList[Math.floor(Math.random() * wordList.length)];
             let attempts = 0;
             while (room.playedCombinations.includes(`${chosenCategory}:${chosenWord}`) && attempts < 50) {
@@ -207,11 +205,9 @@ io.on('connection', (socket) => {
         if (!room || room.gameMode !== "amw") return;
         
         room.amwData.noCount = count;
-        
         io.to(roomCode).emit('amwNoCountUpdated', { noCount: room.amwData.noCount });
 
         if (room.amwData.noCount >= 10) {
-            // Answerer wins the round because 10 NOs checked out
             const answerer = room.players.find(p => p.id === room.amwData.answererId);
             const guesser = room.players.find(p => p.id === room.amwData.guesserId);
             answerer.points += 1;
@@ -235,9 +231,6 @@ io.on('connection', (socket) => {
         if (!room || room.gameMode !== "amw") return;
 
         const guesser = room.players.find(p => p.id === room.amwData.guesserId);
-        const answerer = room.players.find(p => p.id === room.amwData.answererId);
-        
-        // Target word is what the answerer holds secretly
         let targetWord = room.amwData.guesserId === room.players[0].id ? room.amwData.p2Word : room.amwData.p1Word;
 
         if (guessText.trim().toLowerCase() === targetWord.toLowerCase()) {
@@ -282,23 +275,29 @@ io.on('connection', (socket) => {
         io.to(roomCode).emit('allHintsSubmitted', { players: room.players });
     });
 
+    // --- UPDATED: ONLY HOST CAN CAST THE FINAL VOTE ---
     socket.on('castVote', ({ roomCode, votedPlayerId }) => {
         const room = rooms[roomCode];
-        if (!room) return;
+        if (!room || room.gameMode === "amw") return;
+
+        // Verify the event was genuinely triggered by the host player
+        if (socket.id !== room.hostId) {
+            return socket.emit('errorMsg', 'Only the host has the authority to cast the final vote!');
+        }
 
         let pointsSummaryHtml = "";
         const imposter = room.players.find(p => p.isImposter);
 
         if (votedPlayerId === room.imposterId) {
             pointsSummaryHtml = `<h3 style="color:#0095f6; font-size:1.5rem; margin-bottom:10px;">Imposter Caught!</h3>
-            <p>The group successfully voted out <strong>${imposter.name}</strong>.</p>
+            <p>The host successfully singled out the Imposter, <strong>${imposter.name}</strong>!</p>
             <p style="margin-top:10px; color:#cc2366;">The secret word was: <strong>${room.currentWord}</strong></p><br>`;
             room.players.forEach(p => { if (!p.isImposter) p.points += 1; });
         } else {
-            const victim = room.players.find(p => p.id === votedPlayerId);
+            const victim = room.players.find(p => p.id === votedPlayerId) || { name: "An Innocent Player" };
             pointsSummaryHtml = `<h3 style="color:#ed4956; font-size:1.5rem; margin-bottom:10px;">Wrong Accusation!</h3>
-            <p>The group voted out <strong>${victim.name}</strong>.</p>
-            <p style="margin-top:10px; color:#cc2366;">The real imposter was <strong>${imposter.name}</strong>!</p>
+            <p>The host wrongly accused <strong>${victim.name}</strong>.</p>
+            <p style="margin-top:10px; color:#cc2366;">The real imposter was actually <strong>${imposter.name}</strong>!</p>
             <p>The secret word was: <strong>${room.currentWord}</strong></p><br>`;
             imposter.points += 2;
         }
@@ -347,11 +346,17 @@ io.on('connection', (socket) => {
             if (pIdx !== -1) {
                 room.players.splice(pIdx, 1);
                 room.players.forEach((p, idx) => p.pNumber = idx + 1);
-                
+
                 if (room.players.length === 0) {
                     delete rooms[roomCode];
                 } else {
                     if (room.hostId === socket.id) room.hostId = room.players[0].id;
+                    
+                    // Auto-adjust active turn position if active player disconnected
+                    if (room.gameStarted && room.currentTurnIndex >= room.players.length) {
+                        room.currentTurnIndex = 0;
+                    }
+
                     io.to(roomCode).emit('roomUpdated', {
                         roomCode,
                         players: room.players,
